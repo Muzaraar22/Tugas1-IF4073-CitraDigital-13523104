@@ -1,4 +1,4 @@
-function h = Histogram(img)
+function h = histogram(img)
 
 h = zeros(1, 256);             
 [tinggi, lebar] = size(img);
