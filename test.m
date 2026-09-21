@@ -1,20 +1,12 @@
-folderPath = fullfile('citra_test_images', '1. Histogram Citra');
-files = dir(fullfile(folderPath, '*.png'));
+smoothing = [1 1 1; 1 2 1; 1 1 1] / 10;
 
-for k = 1:length(files)
-    namaFile = files(k).name;
-    fullPath = fullfile(folderPath, namaFile);
+img = konvolusi(imgGray, smoothing);
+imgLib = imfilter(imgGray, smoothing, 'replicate');   % 'replicate' disamakan buat dibanding
 
-    img = imread(fullPath);
-    if size(img,3) == 3
-        imgGray = rgb2gray(img);
-    else
-        imgGray = img;
-    end
+figure;
+subplot(1,3,1); imshow(imgGray);      title('Asli');
+subplot(1,3,2); imshow(img); title('Konvolusi Sendiri');
+subplot(1,3,3); imshow(imgLib); title('imfilter (pembanding)');
 
-    myHist = histogram(imgGray);   
-    libHist = imhist(imgGray);
-
-    cocok = isequal(myHist(:), libHist(:));
-    fprintf('%s -> hasil compare = %d\n', namaFile, cocok);
-end
+selisih = double(img) - double(imgLib);
+fprintf('Selisih maksimum: %d\n', max(abs(selisih(:))));
