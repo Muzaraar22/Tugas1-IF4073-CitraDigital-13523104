@@ -25,17 +25,17 @@ padW = (kw - 1) / 2;
 imgPad = zeros(tinggi + 2*padH, lebar + 2*padW);
 imgPad(padH+1:padH+tinggi, padW+1:padW+lebar) = img;
 
-imgPad(1:padH, padW+1:padW+lebar) = repmat(img(1,:), padH, 1);   % atas
-imgPad(padH+tinggi+1:end, padW+1:padW+lebar) = repmat(img(end,:), padH, 1); % bawah
-imgPad(:, 1:padW) = repmat(imgPad(:, padW+1), 1, padW);       % kiri (termasuk sudut)
-imgPad(:, padW+lebar+1:end)                      = repmat(imgPad(:, padW+lebar), 1, padW);   % kanan (termasuk sudut)
+imgPad(1:padH, padW+1:padW+lebar) = repmat(img(1,:), padH, 1);   %atas
+imgPad(padH+tinggi+1:end, padW+1:padW+lebar) = repmat(img(end,:), padH, 1); %bawah
+imgPad(:, 1:padW) = repmat(imgPad(:, padW+1), 1, padW);       %kiri (include sudut)
+imgPad(:, padW+lebar+1:end) = repmat(imgPad(:, padW+lebar), 1, padW);   %kanan (include sudut)
 
 hasil = zeros(tinggi, lebar);
 
 for i = 1:tinggi
     for j = 1:lebar
-        region = imgPad(i:i+kh-1, j:j+kw-1);      % jendela seukuran kernel
-        hasil(i,j) = sum(sum(region .* kernel));   % perkalian elemen, jumlahkan
+        region = imgPad(i:i+kh-1, j:j+kw-1);      %window seukuran kernel
+        hasil(i,j) = sum(sum(region .* kernel));   %konvolusi
     end
 end
 
