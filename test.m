@@ -10,3 +10,4 @@ subplot(1,3,3); imshow(imgLib); title('imfilter (pembanding)');
 
 selisih = double(img) - double(imgLib);
 fprintf('Selisih maksimum: %d\n', max(abs(selisih(:))));
+
