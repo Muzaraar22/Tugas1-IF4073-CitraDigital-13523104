@@ -1,12 +1,14 @@
-test = medianFilter(imgGray, 3);
-lib = medfilt2(imgGray, [3 3]);
+imgSumber = imread(fullfile('citra_test_images','2. Kasus 1','image_01.png'));
+imgReferensi = imread(fullfile('citra_test_images','2. Kasus 1','image_02.png'));
+
+test = histogramSpecification(imgSumber, imgReferensi);
+lib = imhistmatch(imgSumber, imgReferensi, 256); 
 
 figure;
-subplot(1,3,1); imshow(imgGray);      title('ori');
-subplot(1,3,2); imshow(test); title('Median test');
-subplot(1,3,3); imshow(lib); title('medfilt2');
+subplot(1,3,1); imshow(imgSumber);    title('Sumber');
+subplot(1,3,2); imshow(imgReferensi); title('Referensi');
+subplot(1,3,3); imshow(test); title('Hasil');
 
-medTest = test(2:end-1, 2:end-1);
-medLib = lib(2:end-1, 2:end-1);
-selisih = double(medTest) - double(medLib);
-fprintf('Selisih max: %d\n', max(abs(selisih(:))));
+viewHistogram(imgSumber, 'Sumber');
+viewHistogram(imgReferensi, 'Referensi');
+viewHistogram(test, 'Hasil');
