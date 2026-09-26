@@ -4,7 +4,8 @@ function hasil = histogramEqualizationLightness(img)
 %hasil : citra hasil equalization (uint8)
 
 if size(img,3) == 3
-    Lskala = getLightnessChannel(img)
+    labImg = rgb2lab(img);
+    Lskala = getLightnessChannel(img);
     LhasilSkala = equalizeGray(Lskala);
 
     labImg(:,:,1) = double(LhasilSkala) / 255 * 100;  %convert lagi ke ke 0-100

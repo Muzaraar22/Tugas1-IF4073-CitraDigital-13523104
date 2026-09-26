@@ -3,7 +3,7 @@ files = dir(fullfile(folderPath, '*.png'));
 img = imread(fullfile(folderPath, files(4).name));
 
 test = histogramEqualizationLightness(img);
-testRGB = histogramEqualizationRGB(img)
+testRGB = histogramEqualizationRGB(img);
 lib = histeq(img, 256);
 
 
