@@ -1,11 +1,11 @@
-folderPath = fullfile('citra_test_images_final', '1. Histogram Citra');
+folderPath = fullfile('dataset', '1. Histogram Citra');
 files = dir(fullfile(folderPath, '*.png'));
 
 for k = 1:length(files)
     namaFile = files(k).name;
     fullPath = fullfile(folderPath, namaFile);
     img = imread(fullPath);
-    disp(size(img)); %buat confirm doang 
+    disp(size(img)); %buat confirm doang
 
     if size(img,3) == 3
         imgGray = rgb2gray(img);
@@ -14,16 +14,15 @@ for k = 1:length(files)
     end
 
     %cek vs imhist bawaan
-    myHist = histogram(imgGray);
+    myHist = computeHistogram(imgGray);
     libHist = imhist(imgGray);
     cocok = isequal(myHist(:), libHist(:));
     fprintf('%s -> hasil compare = %d\n', namaFile, cocok);
 
     figure('Name', namaFile);
     subplot(2,2,[1 2]); imshow(imgGray); title(namaFile);
-    subplot(2,2,3); bar(0:255, myHist); title('histogram.m');
+    subplot(2,2,3); bar(0:255, myHist); title('computeHistogram.m');
     xlabel('Intensitas'); ylabel('Jumlah Piksel');
     subplot(2,2,4); bar(0:255, libHist); title('imhist');
     xlabel('Intensitas'); ylabel('Jumlah Piksel');
 end
-

@@ -5,7 +5,7 @@ function [nilaiMin, nilaiMax, nilaiMean, nilaiStd] = ekstrakFitur(img)
 %img : citra grayscale 2D, uint8
 %nilaiMin, nilaiMax : intensitas piksel terendah/tertinggi yang muncul
 %nilaiMean, nilaiStd : rata-rata & standar deviasi intensitas
-    h = histogram(img);
+    h = computeHistogram(img);
     totalPiksel = sum(h);
     nilai = 0:255;
 

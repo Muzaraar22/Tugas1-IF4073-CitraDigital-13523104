@@ -1,6 +1,11 @@
+imgGray = imread(fullfile('dataset', '3. Kasus 2', 'image_01.png'));
+if size(imgGray,3) == 3
+    imgGray = rgb2gray(imgGray);
+end
+
 smoothing = [1 1 1; 1 2 1; 1 1 1] / 10;
 
-img = konvolusi(imgGray, smoothing);
+img = convolution(imgGray, smoothing);
 imgLib = imfilter(imgGray, smoothing, 'replicate');   % 'replicate' disamakan buat dibanding
 
 figure;
@@ -10,4 +15,3 @@ subplot(1,3,3); imshow(imgLib); title('imfilter (pembanding)');
 
 selisih = double(img) - double(imgLib);
 fprintf('Selisih maksimum: %d\n', max(abs(selisih(:))));
-

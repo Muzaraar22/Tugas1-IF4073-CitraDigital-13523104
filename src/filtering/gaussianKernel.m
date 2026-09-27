@@ -1,4 +1,4 @@
-function kernel = kernelGaussian(ukuran, sigma)
+function kernel = gaussianKernel(ukuran, sigma)
 
 pusat = (ukuran + 1) / 2;
 kernel = zeros(ukuran, ukuran);

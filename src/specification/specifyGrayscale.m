@@ -1,12 +1,12 @@
-function hasil = specifyGray(img, ref)
+function result = specifyGrayscale(img, ref)
 %histogram specification/matching, grayscale 2D
 
 %img : citra sumber yang mau diubah (uint8)
 %ref : citra referensi (uint8)
 %hasil : citra sumber, histogramnya sudah diubah
 
-hImg = histogram(img);
-hRef = histogram(ref);
+hImg = computeHistogram(img);
+hRef = computeHistogram(ref);
 
 cdfImg = cumsum(hImg / numel(img));
 cdfRef = cumsum(hRef / numel(ref));
@@ -18,5 +18,5 @@ for r = 1:256
     lut(r) = idx - 1;  %idx (1-256) -> intensitas (0-255)
 end
 
-hasil = lut(double(img) + 1);   %match intensitas ke lookup table
+result = lut(double(img) + 1);   %match intensitas ke lookup table
 end

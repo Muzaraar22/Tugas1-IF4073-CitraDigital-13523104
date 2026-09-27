@@ -1,10 +1,10 @@
-function hasil = intensityTransform(img, mode, param)
+function result = intensityTransform(img, mode, param)
 img = double(img);
 
 %hasil = s, img = r kalau ngikutin ppt
 switch lower(mode)
     case 'negative'
-        hasil = 255 - img;
+        result = 255 - img;
 
     case 'log'
         %memperdetail daerah gelap (mirip gamma < 1)
@@ -13,7 +13,7 @@ switch lower(mode)
         else
             c = param;
         end
-        hasil = c * log(1 + img);
+        result = c * log(1 + img);
 
     case 'power'
         %gamma correction: param = [c, gamma]
@@ -21,20 +21,20 @@ switch lower(mode)
         %gamma > 1 -> menggelapkan citra terang
         c = param(1);
         gamma = param(2);
-        hasil = c * (img / 255).^gamma * 255;
+        result = c * (img / 255).^gamma * 255;
 
     case 'stretch'
         %contrast stretching linear: param = [r1, r2]
         %memetakan rentang [r1, r2] jadi [0, 255].
         r1 = param(1);
         r2 = param(2);
-        hasil = (img - r1) / (r2 - r1) * 255;
+        result = (img - r1) / (r2 - r1) * 255;
 
     otherwise
         error('P ga ada dipilihan: %s', mode);
 end
 %clip
-hasil(hasil < 0)   = 0;
-hasil(hasil > 255) = 255;
-hasil = uint8(round(hasil));
+result(result < 0)   = 0;
+result(result > 255) = 255;
+result = uint8(round(result));
 end

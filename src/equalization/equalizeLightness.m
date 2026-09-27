@@ -1,4 +1,4 @@
-function hasil = histogramEqualizationLightness(img)
+function result = equalizeLightness(img)
 %perataan histogram (histogram equalization lightnessnya)
 %img   : citra grayscale (2D) atau RGB (3D), uint8
 %hasil : citra hasil equalization (uint8)
@@ -6,12 +6,12 @@ function hasil = histogramEqualizationLightness(img)
 if size(img,3) == 3
     labImg = rgb2lab(img);
     Lskala = getLightnessChannel(img);
-    LhasilSkala = equalizeGray(Lskala);
+    LhasilSkala = equalizeGrayscale(Lskala);
 
     labImg(:,:,1) = double(LhasilSkala) / 255 * 100;  %convert lagi ke ke 0-100
-    hasil = im2uint8(lab2rgb(labImg));
+    result = im2uint8(lab2rgb(labImg));
     return;
 end
 
-hasil = equalizeGray(img);
+result = equalizeGrayscale(img);
 end

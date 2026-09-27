@@ -1,4 +1,4 @@
-function kernel = bacaKernel(editFields)
+function kernel = readKernelGrid(editFields)
 
 ukuran = size(editFields);
 kernel = zeros(ukuran);

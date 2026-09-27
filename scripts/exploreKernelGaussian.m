@@ -1,18 +1,18 @@
-img = imread(fullfile('citra_test_images','5. Kasus 4','image_03.png'));
+img = imread(fullfile('dataset','5. Kasus 4','image_03.png'));
 disp(size(img));
 
 imgGray = img;
 
-kernelG = kernelGaussian(3, 2); 
-hasil = konvolusi(imgGray, kernelG);
+kernelG = gaussianKernel(3, 2); 
+hasil = convolution(imgGray, kernelG);
 
-kernelG2 = kernelGaussian(9, 1.6);  
-hasil2 = konvolusi(imgGray, kernelG2);
+kernelG2 = gaussianKernel(9, 1.6);  
+hasil2 = convolution(imgGray, kernelG2);
 
 hasil3 = medianFilter(imgGray, 3);
 
 sharp = [0 -1 0; -1 3 -1; 0 -1 0]*1.2;
-hasil4 = konvolusi(imgGray, sharp)
+hasil4 = convolution(imgGray, sharp)
 hasil5 = hasil2 - hasil4
 
 subplot(2,2,1); imshow(imgGray); title("ori");

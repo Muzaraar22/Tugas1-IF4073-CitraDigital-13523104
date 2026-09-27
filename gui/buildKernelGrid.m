@@ -1,11 +1,11 @@
-function editFields = buatKernel(parent, ukuran)
+function editFields = buildKernelGrid(parent, ukuran)
 % buatKernel - bikin grid kotak input NxN di GUI
 
 % parent     : handle container tempat grid ditaruh (misal
 %              app.UIFigure atau sebuah uipanel di App Designer)
 % ukuran     : skalar ganjil
 % editFields : array handle uieditfield ukuran NxN, dipakai nanti
-%              buat baca nilai yang diketik user (lihat bacaKernel.m)
+%              buat baca nilai yang diketik user (lihat readKernelGrid.m)
 
 layout = uigridlayout(parent, [ukuran ukuran]);
 layout.RowSpacing = 2;

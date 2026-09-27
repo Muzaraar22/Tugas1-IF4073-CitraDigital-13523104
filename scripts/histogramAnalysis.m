@@ -1,4 +1,4 @@
-folderPath = fullfile('citra_test_images_final', '2. Kasus 1');
+folderPath = fullfile('dataset', '2. Kasus 1');
 files = dir(fullfile(folderPath, '*.png'));
 
 for k = 1:length(files)
@@ -6,6 +6,6 @@ for k = 1:length(files)
     fullPath = fullfile(folderPath, namaFile);
     img = imread(fullPath);
 
-    viewHistogram(img, namaFile);
+    plotHistogram(img, namaFile);
 end
 

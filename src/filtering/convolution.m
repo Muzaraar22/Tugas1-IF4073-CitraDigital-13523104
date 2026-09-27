@@ -1,12 +1,12 @@
-function hasil = konvolusi(img, kernel)
+function result = convolution(img, kernel)
 %kernel : ganjil x ganjil, dinormalisasikan dulu baru panggil fungsi ini
 %hasil  : citra (uint8), ukuran sama dengan input
 
 if size(img,3) == 3
-    R = konvolusi(img(:,:,1), kernel); %layer depth ke 1
-    G = konvolusi(img(:,:,2), kernel);
-    B = konvolusi(img(:,:,3), kernel);
-    hasil = cat(3, R, G, B);
+    R = convolution(img(:,:,1), kernel); %layer depth ke 1
+    G = convolution(img(:,:,2), kernel);
+    B = convolution(img(:,:,3), kernel);
+    result = cat(3, R, G, B);
     return;
 end
 
@@ -30,16 +30,17 @@ imgPad(padH+tinggi+1:end, padW+1:padW+lebar) = repmat(img(end,:), padH, 1); %baw
 imgPad(:, 1:padW) = repmat(imgPad(:, padW+1), 1, padW);       %kiri (include sudut)
 imgPad(:, padW+lebar+1:end) = repmat(imgPad(:, padW+lebar), 1, padW);   %kanan (include sudut)
 
-hasil = zeros(tinggi, lebar);
+result = zeros(tinggi, lebar);
 
 for i = 1:tinggi
     for j = 1:lebar
         region = imgPad(i:i+kh-1, j:j+kw-1);      %window seukuran kernel
-        hasil(i,j) = sum(sum(region .* kernel));   %konvolusi
+        result(i,j) = sum(sum(region .* kernel));   %konvolusi
     end
 end
 
-hasil(hasil < 0)   = 0;
-hasil(hasil > 255) = 255;
-hasil = uint8(round(hasil));
+%clip
+result(result < 0)   = 0;
+result(result > 255) = 255;
+result = uint8(round(result));
 end
