@@ -33,7 +33,7 @@ for i = 1:tinggi
     for j = 1:lebar
         region    = imgPad(i:i+ukuranWindow-1, j:j+ukuranWindow-1);
         nilaiUrut = sort(region(:));                          %sort nilai dalam window
-        hasil(i,j) = nilaiUrut(ceil(numel(nilaiUrut)/2));     
+        hasil(i,j) = nilaiUrut(ceil(numel(nilaiUrut)/2));
     end
 end
 

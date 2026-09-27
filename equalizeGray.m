@@ -1,6 +1,6 @@
 function hasil = equalizeGray(img)
 %equalization murni untuk 2D
-h = histogram(img);       
+h = histogram(img);
 totalPiksel = numel(img);
 
 pdf = h / totalPiksel;
