@@ -36,5 +36,5 @@ end
 %clip
 hasil(hasil < 0)   = 0;
 hasil(hasil > 255) = 255;
-hasil = uint8(round(hasil)); 
+hasil = uint8(round(hasil));
 end

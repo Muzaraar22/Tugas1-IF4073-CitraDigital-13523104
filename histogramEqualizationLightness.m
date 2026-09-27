@@ -9,7 +9,7 @@ if size(img,3) == 3
     LhasilSkala = equalizeGray(Lskala);
 
     labImg(:,:,1) = double(LhasilSkala) / 255 * 100;  %convert lagi ke ke 0-100
-    hasil = im2uint8(lab2rgb(labImg)); 
+    hasil = im2uint8(lab2rgb(labImg));
     return;
 end
 

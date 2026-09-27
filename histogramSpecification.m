@@ -1,7 +1,7 @@
 function hasil = histogramSpecification(img, ref)
 %cocokkan histogram img ke histogram ref
 
-%img, ref : citra grayscale (2D) atau RGB (3D), uint8 
+%img, ref : citra grayscale (2D) atau RGB (3D), uint8
 %hasil   : citra img yg sudah di matching
 
 if size(img,3) == 3
