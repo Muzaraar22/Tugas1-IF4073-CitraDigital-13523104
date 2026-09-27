@@ -13,7 +13,7 @@ if size(img,3) == 3 %ada 3 chanel/rgb
     warnaBar  = {'r','g','b'};
     for k = 1:3
         h = histogram(img(:,:,k));
-        subplot(2,3,k+2);
+        subplot(2,3,k+3);
         bar(0:255, h, warnaBar{k});
         title(['Histogram Channel/Kanal ' ch{k}]);
         xlabel('Intensitas'); ylabel('Jumlah Piksel');
@@ -24,7 +24,7 @@ else %gray scale
     subplot(1,2,2);
     h = histogram(img);
     bar(0:255, h, 'w');
-    title('Histogram');
+    title('Histogram Grayscale');
     xlabel('Intensitas'); ylabel('Jumlah Piksel');
 end
 end

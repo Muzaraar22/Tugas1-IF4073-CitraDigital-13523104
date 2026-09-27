@@ -5,6 +5,7 @@ for k = 1:length(files)
     namaFile = files(k).name;
     fullPath = fullfile(folderPath, namaFile);
     img = imread(fullPath);
+    disp(size(img)); %buat confirm doang 
 
     if size(img,3) == 3
         imgGray = rgb2gray(img);
