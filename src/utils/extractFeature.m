@@ -1,5 +1,5 @@
-function [nilaiMin, nilaiMax, nilaiMean, nilaiStd] = ekstrakFitur(img)
-%ekstrakFitur - hitung min, max, mean, std dari citra grayscale (biar
+function [nilaiMin, nilaiMax, nilaiMean, nilaiStd] = extractFeature(img)
+%extractFeature - hitung min, max, mean, std dari citra grayscale (biar
 %analisis atau compare di laporan mudah
 
 %img : citra grayscale 2D, uint8
