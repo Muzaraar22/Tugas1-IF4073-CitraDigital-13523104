@@ -22,9 +22,6 @@ subplot(2,2,4); imshow(hasil5); title("ori-sharp");
 
 
 
-
-
-
 % figure;
 %// subplot(1,2,1); imshow(imgGray); title('Asli');
 %/ subplot(1,2,2); imshow(hasil);   title('Gaussian Blur (sigma=1.4)');
