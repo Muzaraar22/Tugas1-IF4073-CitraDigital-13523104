@@ -693,8 +693,28 @@ if isempty(n) || mod(n, 2) == 0
     n = 3;
 end
 
-% Ukuran tetap per sel agar kernel besar tetap usable
-cellSize = 35;  % pixel per sel
+% Hitung ukuran sel agar muat di panel
+% Gunakan drawnow agar layout selesai dihitung dulu
+drawnow;
+pause(0.01);  % beri waktu untuk layout update
+
+% Ambil ukuran panel dalam pixel
+panelPos = app.KernelHost.InnerPosition;
+availableW = panelPos(3) - 20;  % kurangi padding
+availableH = panelPos(4) - 20;    % kurangi padding
+
+% Hitung ukuran sel agar muat, dengan batas min/max
+maxCellSize = 60;
+minCellSize = 25;
+
+% Pilih ukuran yang muat untuk lebar dan tinggi, lalu ambil yang lebih kecil
+cellFromWidth = floor(availableW / n);
+cellFromHeight = floor(availableH / n);
+cellSize = min(cellFromWidth, cellFromHeight);
+
+% Terapkan batas
+cellSize = max(minCellSize, min(maxCellSize, cellSize));
+
 app.KernelLayout = uigridlayout(app.KernelHost, [n n]);
 app.KernelLayout.RowHeight = repmat({cellSize}, 1, n);
 app.KernelLayout.ColumnWidth = repmat({cellSize}, 1, n);
