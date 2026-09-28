@@ -9,10 +9,6 @@ function [result, methodName, paramText] = applyEnhancement(img, technique, para
 % methodName : nama metode yang benar-benar dipakai (untuk laporan)
 % paramText  : string parameter efektif yang dipakai (untuk laporan)
 %
-% Panggil lewat applyEnhancement (bukan langsung ke fungsi src/) supaya aturan
-% penanganan warna dan validasi parameter cukup ditulis di satu tempat.
-% Lihat config/caseRegistry.m untuk contoh pemakaian.
-%
 % Daftar field params per technique:
 %   intensity     .mode .c .gamma .r1 .r2
 %                 mode 'negative'  : tidak butuh param

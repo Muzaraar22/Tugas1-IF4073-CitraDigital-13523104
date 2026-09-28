@@ -8,15 +8,6 @@ function drawImageAndHistograms(axImage, axGray, axChannels, img, judul, grayCol
 % img         : citra grayscale (2D) atau RGB (3D), uint8
 % judul       : judul untuk citra
 % grayColor   : warna batang grayscale (opsional, default putih untuk script)
-%
-% Dipakai bersama oleh plotHistogram (yang membuat figure sendiri) dan oleh
-% GUI (yang menggambar langsung ke axes milik app). Seluruh histogram tetap
-% dihitung dengan computeHistogram, bukan imhist.
-%
-% Catatan: axes di-GUI bisa sempat disembunyikan lewat 'axis off' saat dikosong-
-% kan (lihat clearAxes di ImageEnhancementApp). Karena itu axes-nya dibuat
-% terlihat lagi di sini; tanpa baris ini histogram yang sudah digambar tetap
-% tidak tampil.
 
 if nargin < 6
     grayColor = [1 1 1];

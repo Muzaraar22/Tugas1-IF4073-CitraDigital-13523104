@@ -6,9 +6,6 @@ function index = datasetIndex(rootFolder)
 %                .folder : nama subfolder (misal '2. Kasus 1')
 %                .path   : path lengkap subfolder
 %                .files  : cell array nama file citra PNG, terurut abjad
-%
-% Dipakai oleh GUI (untuk mengisi dropdown/listbox) dan oleh script batch,
-% supaya penambahan citra di dataset langsung terbaca tanpa ubah kode.
 
 if nargin < 1 || isempty(rootFolder)
     rootFolder = 'dataset';

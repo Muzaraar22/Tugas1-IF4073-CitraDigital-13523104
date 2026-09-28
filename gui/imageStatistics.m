@@ -8,11 +8,6 @@ function stats = imageStatistics(img)
 %                         (kosong [] kalau citra grayscale)
 %           .entropy    : entropi (bit) histogram grayscale
 %           .isColor    : true kalau citra RGB
-%
-% Citra grayscale dipakai supaya ukuran lintas citra bisa dibandingkan, dan
-% per kanal dipakai karena spesifikasi minta histogram R,G,B terpisah.
-% Nilai min/maks/mean/std dihitung lewat extractFeature (yang sudah memakai
-% computeHistogram buatan sendiri).
 
 isColor = (size(img, 3) == 3);
 

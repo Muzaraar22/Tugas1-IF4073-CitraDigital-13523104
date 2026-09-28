@@ -1,25 +1,5 @@
 ﻿function app = ImageEnhancementApp()
 % ImageEnhancementApp - GUI analisis dan perbaikan kualitas citra
-%
-%   Menyatukan analisis citra (histogram + fitur statistik) dan enhancement
-%   dalam satu jendela. Citra masukan ditampilkan di kolom kiri beserta
-%   histogram serta fiturnya, hasil enhancement di kolom kanan.
-%
-%   Alur pemakaian:
-%       1. Pilih subfolder dataset dan citra, tekan "Muat Citra"
-%       2. (Opsional) analisis otomatis tampil di kolom kiri
-%       3. Pilih teknik enhancement dan isi parameternya
-%       4. Tekan "Terapkan" - hasil muncul di kolom kanan
-%       5. Tekan "Terapkan" lagi untuk menumpuk teknik (chaining)
-%       6. "Reset" mengembalikan ke citra asli dan mengosongkan riwayat langkah
-%       7. "Simpan Rekapan" menulis satu baris ke out/rekapan.csv
-%
-%   Semua teknik dijalankan lewat applyEnhancement, jadi aturan penanganan
-%   warna dan validasi parameter konsisten dengan script batch.
-
-% Semua logika berada di fungsi ini supaya mudah ditelusuri; komponen dibuat
-% secara programatik (uifigure) supaya kode tetap berupa teks biasa yang mudah
-% di-review, bukan file .mlapp biner.
 
 addpath(genpath(fullfile(fileparts(mfilename('fullpath')), 'src')));
 addpath(fullfile(fileparts(mfilename('fullpath')), 'gui'));
@@ -34,9 +14,6 @@ end
 function app = initApp()
 
 % ---- struktur utama -------------------------------------------------------
-% app dibuat sebagai handle class (AppState) supaya perubahan state di dalam
-% callback tetap terlihat oleh pemanggil; kalau memakai struct biasa, MATLAB
-% meneruskan struct secara by-value dan semua perubahan akan hilang.
 app = AppState();
 
 app.DatasetIdx = datasetIndex('dataset');
@@ -702,16 +679,6 @@ if isempty(n) || mod(n, 2) == 0
     n = 3;
 end
 
-% Sel diisi memakai ukuran '1x' (flex) supaya grid selalu muat persis di dalam
-% panel, sebesar apa pun ruang yang tersedia. Ukuran tetap dalam pixel (versi
-% sebelumnya) tidak bisa menyesuaikan diri: ukuran panel hanya diketahui pasti
-% setelah figure tampil, jadi hasil pengukurannya belum tentu benar, dan kalau
-% grid ternyata lebih tinggi dari panelnya MATLAB mengecilkan kotak input.
-
-% app.KernelLayout hanya berperan sebagai wadah 1x1; susunan sel NxN dibuat di
-% dalam buildKernelGrid. Kalau wadah ini dibuat berukuran NxN, grid di dalamnya
-% akan terpaut di sel (1,1) saja sehingga kotak input hanya mengisi seperdelapan
-% ruang panel.
 app.KernelLayout = uigridlayout(app.KernelHost, [1 1]);
 app.KernelLayout.Padding = [2 2 2 2];
 app.KernelLayout.BackgroundColor = 'w';

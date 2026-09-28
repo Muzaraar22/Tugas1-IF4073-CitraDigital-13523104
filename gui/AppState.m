@@ -1,14 +1,5 @@
 classdef AppState < handle
-% AppState - wadah state bersama untuk ImageEnhancementApp
-%
-%   Dibuat sebagai handle class supaya perubahan pada state (citra masukan,
-%   citra hasil, riwayat langkah, handle komponen GUI) ikut terlihat oleh semua
-%   callback. Kalau state disimpan di struct biasa, MATLAB meneruskan struct
-%   secara by-value sehingga perubahan di dalam callback tidak pernah keluar.
-%
-%   Properti diisi bertahap saat UI dibangun: buildLeftPanel, buildIntensityPanel,
-%   buildEqualizationPanel, buildSpecificationPanel, buildFilteringPanel, dan
-%   buildRightPanel.
+% AppState - wadah state untuk ImageEnhancementApp
 
     properties
         % ---- state aplikasi ----
