@@ -80,7 +80,7 @@ end
 function app = buildLeftPanel(app)
 
 p = uigridlayout(app.LeftPanel, [7 1]);
-p.RowHeight = {22, '1x', 22, 30, '1x', 26, 26};
+p.RowHeight = {22, 26, 120, 30, 26, '1x', 26};
 p.RowSpacing = 4;
 p.Padding = [8 8 8 8];
 p.BackgroundColor = [0.96 0.96 0.96];
@@ -115,7 +115,7 @@ uibutton(loadRow, 'Text', 'Muat Citra', ...
     'ButtonPushedFcn', @(~, ~) loadSelectedImage(app));
 app.InfoLabel = uilabel(loadRow, 'Text', '', ...
     'HorizontalAlignment', 'left', 'FontSize', 10, ...
-    'FontColor', [0.35 0.35 0.35]);
+    'FontColor', [0.2 0.2 0.2]);
 
 % --- 2. pilih teknik -------------------------------------------------------
 uilabel(p, 'Text', '2. TEKNIK ENHANCEMENT', 'FontWeight', 'bold', ...
@@ -135,7 +135,7 @@ app.TechBox = uidropdown(techRow, ...
 app.TechBox.ValueChangedFcn = @(~, ~) onTechniqueChanged(app);
 app.TechHint = uilabel(techRow, 'Text', '?', ...
     'Tooltip', {''}, 'HorizontalAlignment', 'center', ...
-    'FontColor', [0.4 0.4 0.4]);
+    'FontColor', [0.3 0.3 0.3]);
 
 % --- panel parameter per teknik (hanya satu terlihat) -----------------------
 app.ParamStack = uigridlayout(p, [4 1]);
@@ -251,7 +251,7 @@ msg = uilabel(g, 'Text', {'', ...
     'lightness : perataan pada kanal L (Lab), warna tetap terjaga', ...
     'rgb        : perataan terpisah tiap kanal R,G,B, warna bisa bergeser', ...
     'grayscale  : hanya untuk citra abu-abu; pada citra berwarna otomatis'}, ...
-    'FontSize', 9, 'FontColor', [0.4 0.4 0.4]);
+    'FontSize', 9, 'FontColor', [0.3 0.3 0.3]);
 msg.WordWrap = 'on';
 end
 
@@ -296,7 +296,7 @@ uibutton(actRow, 'Text', 'Dari File...', ...
     'ButtonPushedFcn', @(~, ~) onOpenReferenceFile(app));
 
 app.RefStatus = uilabel(g, 'Text', 'Belum ada citra referensi dipilih', ...
-    'FontSize', 9, 'FontColor', [0.55 0.30 0.30]);
+    'FontSize', 9, 'FontColor', [0.5 0.1 0.1]);
 app.RefStatus.Layout.Row = 3;
 app.RefStatus.Layout.Column = [1 2];
 end
