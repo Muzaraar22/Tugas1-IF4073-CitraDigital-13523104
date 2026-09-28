@@ -598,10 +598,19 @@ end
 function onTechniqueChanged(app)
 tech = app.TechBox.Value;
 
-app.Panels.intensity.Visible       = strcmp(tech, 'Intensity Transformation');
-app.Panels.equalization.Visible    = strcmp(tech, 'Histogram Equalization');
-app.Panels.specification.Visible   = strcmp(tech, 'Histogram Specification / Matching');
-app.Panels.filtering.Visible       = strcmp(tech, 'Image Filtering');
+    app.Panels.intensity.Visible       = strcmp(tech, 'Intensity Transformation');
+    app.Panels.equalization.Visible    = strcmp(tech, 'Histogram Equalization');
+    app.Panels.specification.Visible   = strcmp(tech, 'Histogram Specification / Matching');
+    app.Panels.filtering.Visible       = strcmp(tech, 'Image Filtering');
+
+    % uigridlayout tetap mengalokasikan tinggi untuk baris yang komponennya
+    % disembunyikan, jadi baris panel non-aktif dilipat supaya panel yang aktif
+    % mendapat seluruh ruang. Tanpa ini panel Image Filtering hanya terpaut
+    % ~1/4 tinggi dan grid kernel kustom kekurangan tempat.
+    setPanelRowVisible(app, 'intensity',     app.Panels.intensity.Visible);
+    setPanelRowVisible(app, 'equalization',  app.Panels.equalization.Visible);
+    setPanelRowVisible(app, 'specification', app.Panels.specification.Visible);
+    setPanelRowVisible(app, 'filtering',     app.Panels.filtering.Visible);
 
 % tampilkan field yang relevan untuk teknik terpilih
 updateIntensityFields(app);
@@ -693,33 +702,17 @@ if isempty(n) || mod(n, 2) == 0
     n = 3;
 end
 
-% Hitung ukuran sel agar muat di panel
-% Gunakan drawnow agar layout selesai dihitung dulu
-drawnow;
-pause(0.01);  % beri waktu untuk layout update
+% Sel diisi memakai ukuran '1x' (flex) supaya grid selalu muat persis di dalam
+% panel, sebesar apa pun ruang yang tersedia. Ukuran tetap dalam pixel (versi
+% sebelumnya) tidak bisa menyesuaikan diri: ukuran panel hanya diketahui pasti
+% setelah figure tampil, jadi hasil pengukurannya belum tentu benar, dan kalau
+% grid ternyata lebih tinggi dari panelnya MATLAB mengecilkan kotak input.
 
-% Ambil ukuran panel dalam pixel
-panelPos = app.KernelHost.InnerPosition;
-availableW = panelPos(3) - 20;  % kurangi padding
-availableH = panelPos(4) - 20;    % kurangi padding
-
-% Hitung ukuran sel agar muat, dengan batas min/max
-maxCellSize = 60;
-minCellSize = 25;
-
-% Pilih ukuran yang muat untuk lebar dan tinggi, lalu ambil yang lebih kecil
-cellFromWidth = floor(availableW / n);
-cellFromHeight = floor(availableH / n);
-cellSize = min(cellFromWidth, cellFromHeight);
-
-% Terapkan batas
-cellSize = max(minCellSize, min(maxCellSize, cellSize));
-
-app.KernelLayout = uigridlayout(app.KernelHost, [n n]);
-app.KernelLayout.RowHeight = repmat({cellSize}, 1, n);
-app.KernelLayout.ColumnWidth = repmat({cellSize}, 1, n);
-app.KernelLayout.RowSpacing = 1;
-app.KernelLayout.ColumnSpacing = 1;
+% app.KernelLayout hanya berperan sebagai wadah 1x1; susunan sel NxN dibuat di
+% dalam buildKernelGrid. Kalau wadah ini dibuat berukuran NxN, grid di dalamnya
+% akan terpaut di sel (1,1) saja sehingga kotak input hanya mengisi seperdelapan
+% ruang panel.
+app.KernelLayout = uigridlayout(app.KernelHost, [1 1]);
 app.KernelLayout.Padding = [2 2 2 2];
 app.KernelLayout.BackgroundColor = 'w';
 
@@ -1016,6 +1009,14 @@ if ~visible
 else
     grid.RowHeight{row} = '1x';
 end
+end
+
+% ---------------------------------------------------------------------------
+function setPanelRowVisible(app, panelName, visible)
+% Lipat/buka baris pada ParamStack milik panel teknik dengan nama panelName.
+% Baris diambil dari Layout.Row panel itu sendiri supaya nomor baris tidak
+% di-hardcode di dua tempat.
+setRowVisible(app.ParamStack, app.Panels.(panelName).Layout.Row, visible);
 end
 
 function clearAxes(ax)

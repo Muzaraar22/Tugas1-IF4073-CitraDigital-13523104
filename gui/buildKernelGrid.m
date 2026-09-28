@@ -7,9 +7,15 @@ function editFields = buildKernelGrid(parent, ukuran)
 % editFields : array handle uieditfield ukuran NxN, dipakai nanti
 %              buat baca nilai yang diketik user (lihat readKernelGrid.m)
 
+% Ukuran baris/kolom memakai '1x' (flex), bukan pixel tetap, supaya grid ikut
+% mengisi ruang panel apa pun ukurannya. Ukuran pixel tetap akan membuat kotak
+% input menyusut kalau ruang tersedia berubah.
 layout = uigridlayout(parent, [ukuran ukuran]);
-layout.RowSpacing = 2;
-layout.ColumnSpacing = 2;
+layout.RowHeight = repmat({'1x'}, 1, ukuran);
+layout.ColumnWidth = repmat({'1x'}, 1, ukuran);
+layout.RowSpacing = 1;
+layout.ColumnSpacing = 1;
+layout.BackgroundColor = 'w';
 
 editFields = gobjects(ukuran, ukuran);
 
