@@ -49,6 +49,7 @@ app.Panels = struct('intensity', [], 'equalization', [], ...
 app.Figure = uifigure( ...
     'Name',             'Analisis dan Perbaikan Kualitas Citra - IF4073', ...
     'Position',         [80 40 1240 760], ...
+    'Theme',            'light', ...
     'Color',            [0.94 0.94 0.94], ...
     'AutoResizeChildren', false, ...
     'CloseRequestFcn',  @(src, ~) closeApp(src, app));
@@ -80,7 +81,7 @@ end
 function app = buildLeftPanel(app)
 
 p = uigridlayout(app.LeftPanel, [7 1]);
-p.RowHeight = {22, 26, 120, 30, 26, '1x', 26};
+p.RowHeight = {22, 26, 108, 30, 26, '1x', 26};
 p.RowSpacing = 4;
 p.Padding = [8 8 8 8];
 p.BackgroundColor = [0.96 0.96 0.96];
@@ -379,8 +380,8 @@ app.AxImageOut = uiaxes(app.ImageOutPanel);
 % baris 2: histogram grayscale
 app.HistInPanel  = makeDisplayPanel(g, 'HISTOGRAM ABU-ABU - MASUKAN', 2, 1);
 app.HistOutPanel = makeDisplayPanel(g, 'HISTOGRAM ABU-ABU - HASIL',    2, 2);
-app.AxHistIn  = uiaxes(app.HistInPanel);
-app.AxHistOut = uiaxes(app.HistOutPanel);
+app.AxHistIn  = makeHistogramAxes(app.HistInPanel);
+app.AxHistOut = makeHistogramAxes(app.HistOutPanel);
 
 % baris 3: histogram per kanal
 app.ChInPanel  = makeDisplayPanel(g, 'HISTOGRAM KANAL R,G,B - MASUKAN', 3, 1);
@@ -425,6 +426,15 @@ pnl.Layout.Column = col;
 end
 
 % ---------------------------------------------------------------------------
+function ax = makeHistogramAxes(parent)
+lay = uigridlayout(parent, [1 1]);
+lay.Padding = [2 2 2 2];
+lay.BackgroundColor = 'w';
+ax = uiaxes(lay);
+ax.Layout.Row = 1;
+ax.Layout.Column = 1;
+end
+
 function ax = makeChannelAxes(parent)
 % tiga axes kecil untuk histogram kanal R, G, B di dalam satu panel
 lay = uigridlayout(parent, [1 3]);
@@ -774,7 +784,7 @@ end
 isColor = (size(app.Original, 3) == 3);
 drawImageAndHistograms( ...
     app.AxImageIn, app.AxHistIn, pickChannels(app.AxChIn, isColor), ...
-    app.Original, 'masukan');
+    app.Original, 'masukan', [0.25 0.25 0.25]);
 
 % judul grayscale di kolom masukan haris sama dengan kolom hasil
 title(app.AxHistIn, 'Histogram Abu-abu - Masukan');
@@ -790,7 +800,7 @@ end
 isColor = (size(app.Result, 3) == 3);
 drawImageAndHistograms( ...
     app.AxImageOut, app.AxHistOut, pickChannels(app.AxChOut, isColor), ...
-    app.Result, 'hasil');
+    app.Result, 'hasil', [0.25 0.25 0.25]);
 title(app.AxHistOut, 'Histogram Abu-abu - Hasil');
 end
 
@@ -1001,7 +1011,6 @@ switch tech
         tip = '';
 end
 end
-
 
 
 
