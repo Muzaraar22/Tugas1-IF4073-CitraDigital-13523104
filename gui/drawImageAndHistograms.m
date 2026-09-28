@@ -24,6 +24,14 @@ end
 
 if size(img,3) == 3 %ada 3 chanel/rgb
     axImage.Visible = 'on';
+
+    % Konfigurasi axes untuk mengisi panel (sudah diatur di buildRightPanel)
+    axis(axImage, 'off');
+
+    % Enable interactivity
+    zoom(axImage, 'on');
+    pan(axImage, 'on');
+
     imshow(img, 'Parent', axImage);
     title(axImage, ['Citra ' judul]);
 
@@ -44,6 +52,14 @@ if size(img,3) == 3 %ada 3 chanel/rgb
     end
 else %gray scale
     axImage.Visible = 'on';
+
+    % Konfigurasi axes untuk mengisi panel (sudah diatur di buildRightPanel)
+    axis(axImage, 'off');
+
+    % Enable interactivity
+    zoom(axImage, 'on');
+    pan(axImage, 'on');
+
     imshow(img, 'Parent', axImage);
     title(axImage, ['Citra ' judul]);
 

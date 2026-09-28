@@ -155,9 +155,14 @@ app.TechBox = uidropdown(techRow, ...
     'Value', 'Intensity Transformation', ...
     'BackgroundColor', 'w');
 app.TechBox.ValueChangedFcn = @(~, ~) onTechniqueChanged(app);
-app.TechHint = uilabel(techRow, 'Text', '?', ...
-    'Tooltip', {''}, 'HorizontalAlignment', 'center', ...
-    'FontColor', [0.3 0.3 0.3]);
+
+% Tombol info untuk menampilkan popup tentang teknik
+app.InfoButton = uibutton(techRow, 'Text', 'i', ...
+    'FontWeight', 'bold', ...
+    'FontSize', 12, ...
+    'BackgroundColor', [0.7 0.7 0.7], ...
+    'Tooltip', 'Klik untuk info teknik', ...
+    'ButtonPushedFcn', @(~, ~) showTechniqueInfo(app));
 
 % --- panel parameter per teknik (hanya satu terlihat) -----------------------
 app.ParamStack = uigridlayout(p, [4 1]);
@@ -392,8 +397,16 @@ g.BackgroundColor = [0.94 0.94 0.94];
 % baris 1: citra
 app.ImageInPanel  = makeDisplayPanel(g, 'CITRA MASUKAN', 1, 1);
 app.ImageOutPanel = makeDisplayPanel(g, 'CITRA HASIL',    1, 2);
-app.AxImageIn  = uiaxes(app.ImageInPanel);
-app.AxImageOut = uiaxes(app.ImageOutPanel);
+
+% Gunakan axes biasa dengan posisi eksplisit agar mengisi panel
+% Posisi [left bottom width height] - disesuaikan agar tidak overlap dengan panel title
+app.AxImageIn = axes('Parent', app.ImageInPanel);
+app.AxImageIn.Position = [0.02, 0.10, 0.96, 0.86];
+app.AxImageIn.Visible = 'off';
+
+app.AxImageOut = axes('Parent', app.ImageOutPanel);
+app.AxImageOut.Position = [0.02, 0.10, 0.96, 0.86];
+app.AxImageOut.Visible = 'off';
 
 % baris 2: histogram grayscale
 app.HistInPanel  = makeDisplayPanel(g, 'HISTOGRAM ABU-ABU - MASUKAN', 2, 1);
@@ -593,8 +606,29 @@ app.Panels.filtering.Visible       = strcmp(tech, 'Image Filtering');
 % tampilkan field yang relevan untuk teknik terpilih
 updateIntensityFields(app);
 updateFilteringFields(app);
+end
 
-app.TechHint.Tooltip = techniqueTooltip(tech);
+function showTechniqueInfo(app)
+% Tampilkan popup dengan info tentang teknik yang dipilih
+tech = app.TechBox.Value;
+info = techniqueTooltip(tech);
+
+% Ekstrak judul teknik
+switch tech
+    case 'Intensity Transformation'
+        title = 'Intensity Transformation';
+    case 'Histogram Equalization'
+        title = 'Histogram Equalization';
+    case 'Histogram Specification / Matching'
+        title = 'Histogram Specification / Matching';
+    case 'Image Filtering'
+        title = 'Image Filtering';
+end
+
+% Tampilkan dialog info
+uiconfirm(app.Figure, info, title, ...
+    'Options', {'OK'}, ...
+    'Icon', 'info');
 end
 
 function updateIntensityFields(app)
@@ -659,7 +693,11 @@ if isempty(n) || mod(n, 2) == 0
     n = 3;
 end
 
+% Ukuran tetap per sel agar kernel besar tetap usable
+cellSize = 35;  % pixel per sel
 app.KernelLayout = uigridlayout(app.KernelHost, [n n]);
+app.KernelLayout.RowHeight = repmat({cellSize}, 1, n);
+app.KernelLayout.ColumnWidth = repmat({cellSize}, 1, n);
 app.KernelLayout.RowSpacing = 1;
 app.KernelLayout.ColumnSpacing = 1;
 app.KernelLayout.Padding = [2 2 2 2];

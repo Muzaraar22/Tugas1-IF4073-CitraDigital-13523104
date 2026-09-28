@@ -31,7 +31,7 @@ classdef AppState < handle
     properties
         % ---- panel kontrol kiri ----
         FolderBox  = []; ImageBox = []; InfoLabel = [];
-        TechBox    = []; TechHint = [];
+        TechBox    = []; InfoButton = [];
         ParamStack = [];
 
         % pilih citra & teknik
