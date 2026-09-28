@@ -15,7 +15,8 @@ if nargin < 1 || isempty(rootFolder)
 end
 
 if ~isfolder(rootFolder)
-    error('Folder dataset tidak ditemukan: %s', rootFolder);
+    error('datasetIndex:folderTidakDitemukan', ...
+        'Folder dataset tidak ditemukan: %s', rootFolder);
 end
 
 dirs = dir(rootFolder);
