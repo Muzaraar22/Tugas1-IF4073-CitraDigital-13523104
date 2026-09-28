@@ -19,13 +19,7 @@ img = double(img);
 [tinggi, lebar] = size(img);
 pad = (ukuranWindow - 1) / 2;
 
-%padding replicate
-imgPad = zeros(tinggi + 2*pad, lebar + 2*pad);
-imgPad(pad+1:pad+tinggi, pad+1:pad+lebar) = img;
-imgPad(1:pad, pad+1:pad+lebar)            = repmat(img(1,:), pad, 1);
-imgPad(pad+tinggi+1:end, pad+1:pad+lebar) = repmat(img(end,:), pad, 1);
-imgPad(:, 1:pad)                          = repmat(imgPad(:, pad+1), 1, pad);
-imgPad(:, pad+lebar+1:end)                = repmat(imgPad(:, pad+lebar), 1, pad);
+imgPad = padReplicate(img, pad, pad);
 
 result = zeros(tinggi, lebar);
 

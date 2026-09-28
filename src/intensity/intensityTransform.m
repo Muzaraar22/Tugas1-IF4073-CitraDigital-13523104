@@ -34,7 +34,5 @@ switch lower(mode)
         error('P ga ada dipilihan: %s', mode);
 end
 %clip
-result(result < 0)   = 0;
-result(result > 255) = 255;
-result = uint8(round(result));
+result = clipToUint8(result);
 end

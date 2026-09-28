@@ -28,3 +28,6 @@ desktop.ini
 
 # Report scratch output (final report PDF is committed in docs/)
 /out/
+
+# Spesifikasi tugas (sumber eksternal, tidak di-track)
+docs/tugas1-if4073-spesifikasi.md

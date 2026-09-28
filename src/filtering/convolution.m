@@ -21,14 +21,7 @@ end
 padH = (kh - 1) / 2;
 padW = (kw - 1) / 2;
 
-%padding replikasi piksel
-imgPad = zeros(tinggi + 2*padH, lebar + 2*padW);
-imgPad(padH+1:padH+tinggi, padW+1:padW+lebar) = img;
-
-imgPad(1:padH, padW+1:padW+lebar) = repmat(img(1,:), padH, 1);   %atas
-imgPad(padH+tinggi+1:end, padW+1:padW+lebar) = repmat(img(end,:), padH, 1); %bawah
-imgPad(:, 1:padW) = repmat(imgPad(:, padW+1), 1, padW);       %kiri (include sudut)
-imgPad(:, padW+lebar+1:end) = repmat(imgPad(:, padW+lebar), 1, padW);   %kanan (include sudut)
+imgPad = padReplicate(img, padH, padW);
 
 result = zeros(tinggi, lebar);
 
@@ -40,7 +33,5 @@ for i = 1:tinggi
 end
 
 %clip
-result(result < 0)   = 0;
-result(result > 255) = 255;
-result = uint8(round(result));
+result = clipToUint8(result);
 end
