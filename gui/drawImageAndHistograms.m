@@ -39,7 +39,7 @@ if size(img,3) == 3 %ada 3 chanel/rgb
         h = computeHistogram(img(:,:,k));
         axChannels(k).Visible = 'on';
         bar(axChannels(k), 0:255, h, warnaBar{k});
-        title(axChannels(k), ['Histogram Channel/Kanal ' ch{k}]);
+        title(axChannels(k), ['Kanal ' ch{k}]);
         xlabel(axChannels(k), 'Intensitas'); ylabel(axChannels(k), 'Jumlah Piksel');
     end
 else %gray scale

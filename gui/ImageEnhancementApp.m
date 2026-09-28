@@ -54,24 +54,42 @@ app.Figure = uifigure( ...
     'AutoResizeChildren', false, ...
     'CloseRequestFcn',  @(src, ~) closeApp(src, app));
 
-% ---- pembagian: panel kontrol kiri + area tampilan kanan ------------------
-outer = uigridlayout(app.Figure, [1 2]);
-outer.ColumnWidth = {330, '1x'};
-outer.ColumnSpacing = 8;
-outer.Padding = [8 8 8 8];
-outer.BackgroundColor = [0.94 0.94 0.94];
+% ---- divider position (normalized 0-1) ----
+app.DividerPos = 0.27;  % 27% from left
+app.IsDragging = false;
 
-app.LeftPanel  = uipanel(outer, 'Title', '', 'BorderType', 'none', ...
-    'BackgroundColor', [0.96 0.96 0.96]);
-app.RightPanel = uipanel(outer, 'Title', '', 'BorderType', 'none', ...
-    'BackgroundColor', [0.94 0.94 0.94]);
-app.LeftPanel.Layout.Row = 1;  app.LeftPanel.Layout.Column = 1;
-app.RightPanel.Layout.Row = 1; app.RightPanel.Layout.Column = 2;
+% ---- pembagian: panel kontrol kiri + area tampilan kanan ----
+% Gunakan panel dengan posisi manual agar bisa di-resize dengan drag divider
+app.LeftPanel  = uipanel(app.Figure, ...
+    'Title', '', ...
+    'BorderType', 'none', ...
+    'BackgroundColor', [0.96 0.96 0.96], ...
+    'Units', 'normalized');
 
+app.RightPanel = uipanel(app.Figure, ...
+    'Title', '', ...
+    'BorderType', 'none', ...
+    'BackgroundColor', [0.94 0.94 0.94], ...
+    'Units', 'normalized');
+
+% ---- divider pemisah ----
+app.Divider = uipanel(app.Figure, ...
+    'Title', '', ...
+    'BorderType', 'none', ...
+    'BackgroundColor', [0.7 0.7 0.7], ...
+    'Units', 'normalized');
+
+% Atur posisi awal panel dan divider
+updatePanelPositions(app);
+
+% ---- bangun isi panel kiri dan kanan ----
 buildLeftPanel(app);
 buildRightPanel(app);
 
 setEmptyState(app);
+
+% ---- setup mouse callbacks untuk drag divider ----
+setupDividerCallbacks(app);
 
 % figure dibuat visible setelah semua komponen siap supaya tidak berkedip
 app.Figure.Visible = 'on';
@@ -90,10 +108,12 @@ p.BackgroundColor = [0.96 0.96 0.96];
 uilabel(p, 'Text', '1. PILIH CITRA', 'FontWeight', 'bold', ...
     'FontColor', [0.15 0.25 0.45]);
 
+% Tambah "Dari File..." di awal dropdown
+allFolderItems = ['Dari File...', {app.DatasetIdx.folder}];
 app.FolderBox = uidropdown(p, ...
-    'Items',     {app.DatasetIdx.folder}, ...
+    'Items',     allFolderItems, ...
     'Value',     app.DatasetIdx(1).folder, ...
-    'Tooltip',   'Subfolder dataset citra uji', ...
+    'Tooltip',   'Pilih folder dataset atau buka file citra eksternal', ...
     'BackgroundColor', 'w');
 app.FolderBox.ValueChangedFcn = @(~, ~) onFolderChanged(app);
 
@@ -105,8 +125,8 @@ app.ImageBox.ValueChangedFcn = @(~, ~) onImageSelected(app);
 app.ImageBox.Multiselect = 'off';
 
 
-loadRow = uigridlayout(p, [1 2]);
-loadRow.ColumnWidth = {'1x', 30};
+loadRow = uigridlayout(p, [1 3]);
+loadRow.ColumnWidth = {'1x', 150, 30};
 loadRow.Padding = [0 0 0 0];
 loadRow.BackgroundColor = [0.96 0.96 0.96];
 uibutton(loadRow, 'Text', 'Muat Citra', ...
@@ -117,6 +137,7 @@ uibutton(loadRow, 'Text', 'Muat Citra', ...
 app.InfoLabel = uilabel(loadRow, 'Text', '', ...
     'HorizontalAlignment', 'left', 'FontSize', 10, ...
     'FontColor', [0.2 0.2 0.2]);
+app.InfoLabel.Layout.Column = 2;
 
 % --- 2. pilih teknik -------------------------------------------------------
 uilabel(p, 'Text', '2. TEKNIK ENHANCEMENT', 'FontWeight', 'bold', ...
@@ -264,8 +285,8 @@ pnl = uipanel(app.ParamStack, 'Title', '', 'BorderType', 'line', ...
 pnl.Layout.Row = 3;
 app.Panels.specification = pnl;
 
-g = uigridlayout(pnl, [3 2]);
-g.RowHeight   = {22, '1x', 22};
+g = uigridlayout(pnl, [4 2]);
+g.RowHeight   = {22, '1x', 26, 22};
 g.ColumnWidth = {90, '1x'};
 g.RowSpacing  = 3;
 g.ColumnSpacing = 4;
@@ -273,8 +294,9 @@ g.Padding = [6 6 6 6];
 g.BackgroundColor = [0.99 0.99 0.99];
 
 uilabel(g, 'Text', 'Subfolder');
+allRefFolders = ['Dari File...', {app.DatasetIdx.folder}];
 app.RefFolderBox = uidropdown(g, ...
-    'Items', {app.DatasetIdx.folder}, ...
+    'Items', allRefFolders, ...
     'Value', app.DatasetIdx(1).folder, ...
     'BackgroundColor', 'w');
 app.RefFolderBox.ValueChangedFcn = @(~, ~) onRefFolderChanged(app);
@@ -285,20 +307,16 @@ app.RefImageBox = uilistbox(g, ...
     'Value', app.DatasetIdx(1).files{1});
 app.RefImageBox.Multiselect = 'off';
 
-
-actRow = uigridlayout(g, [1 2]);
-actRow.ColumnWidth = {'1x', '1x'};
-actRow.ColumnSpacing = 4;
-actRow.Padding = [0 0 0 0];
-actRow.BackgroundColor = [0.99 0.99 0.99];
-uibutton(actRow, 'Text', 'Pakai Citra Terpilih', ...
+% Baris 3: tombol-tombol
+uibutton(g, 'Text', 'Pakai Citra Terpilih', ...
     'ButtonPushedFcn', @(~, ~) onUseReference(app));
-uibutton(actRow, 'Text', 'Dari File...', ...
+uibutton(g, 'Text', 'Dari File...', ...
     'ButtonPushedFcn', @(~, ~) onOpenReferenceFile(app));
 
+% Baris 4: status referensi
 app.RefStatus = uilabel(g, 'Text', 'Belum ada citra referensi dipilih', ...
     'FontSize', 9, 'FontColor', [0.5 0.1 0.1]);
-app.RefStatus.Layout.Row = 3;
+app.RefStatus.Layout.Row = 4;
 app.RefStatus.Layout.Column = [1 2];
 end
 
@@ -396,7 +414,9 @@ app.StatsTable = uitable(app.StatsPanel, ...
     'ColumnWidth', {'auto', 'auto', 'auto'}, ...
     'RowName', {}, ...
     'FontSize', 10, ...
-    'BackgroundColor', 'w');
+    'BackgroundColor', 'w', ...
+    'Units', 'normalized', ...
+    'Position', [0, 0, 1, 1]);
 
 app.LogPanel = makeDisplayPanel(g, 'METODE, PARAMETER & CATATAN', 4, 2);
 inner = uigridlayout(app.LogPanel, [2 1]);
@@ -454,6 +474,13 @@ end
 
 function onFolderChanged(app)
 folder = app.FolderBox.Value;
+
+% Cek apakah "Dari File..." dipilih
+if strcmp(folder, 'Dari File...')
+    onOpenImageFile(app);
+    return;
+end
+
 k = find(strcmp({app.DatasetIdx.folder}, folder), 1);
 if isempty(k), return; end
 app.ImageBox.Items = app.DatasetIdx(k).files;
@@ -464,12 +491,51 @@ app.RefFolderBox.Value = folder;
 onRefFolderChanged(app);
 end
 
+function onOpenImageFile(app)
+% Buka dialog untuk memilih citra dari file eksternal
+[fileName, pathName] = uigetfile({'*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff', ...
+    'File citra (*.png, *.jpg, *.bmp, *.tif)'; '*.*', 'Semua file'}, ...
+    'Pilih citra');
+
+if isequal(fileName, 0)
+    % Jika dibatalkan, kembali ke folder default
+    app.FolderBox.Value = app.DatasetIdx(1).folder;
+    return;
+end
+
+try
+    img = imread(fullfile(pathName, fileName));
+
+    app.Original = img;
+    app.Result   = [];
+    app.Steps    = {};
+
+    % Update info label
+    app.InfoLabel.Text = sprintf('Eksternal: %s', fileName);
+
+    app.LogText.Value = {'Citra dari file eksternal dimuat.'};
+    app.NoteText.Value = {''};
+
+    refreshAll(app);
+catch ex
+    uialert(app.Figure, sprintf('Gagal membaca citra:\n%s', ex.message), ...
+        'Citra tidak bisa dimuat');
+end
+end
+
 function onRefFolderChanged(app)
 folder = app.RefFolderBox.Value;
+
+% Cek apakah "Dari File..." dipilih
+if strcmp(folder, 'Dari File...')
+    onOpenReferenceFile(app);
+    return;
+end
+
 k = find(strcmp({app.DatasetIdx.folder}, folder), 1);
 if isempty(k), return; end
 app.RefImageBox.Items = app.DatasetIdx(k).files;
-app.RefImageBox.Value = app.DatasetIdx(k).files{1};
+app.RefImageBox.Value = app.RefImageBox.Items{1};
 end
 
 function onImageSelected(~)
@@ -502,6 +568,7 @@ isColor = (size(img, 3) == 3);
 app.ChInPanel.Visible  = isColor;
 app.ChOutPanel.Visible = isColor;
 setRowVisible(app.ChInPanel.Parent, 3, isColor);
+setRowVisible(app.ChOutPanel.Parent, 3, isColor);
 
 if isColor
     app.InfoLabel.Text = sprintf('RGB %dx%d', size(img, 1), size(img, 2));
@@ -1012,6 +1079,83 @@ switch tech
 end
 end
 
+% ===========================================================================
+% Draggable Divider
+% ===========================================================================
+
+function updatePanelPositions(app)
+% Perbarui posisi panel kiri, kanan, dan divider berdasarkan DividerPos
+    figPos = app.Figure.Position;
+    margin = 8 / figPos(3);  % margin dalam normalized units
+    dividerWidth = 6 / figPos(3);  % lebar divider dalam normalized units
+    gap = 4 / figPos(3);  % gap antar panel dan divider
+
+    divX = app.DividerPos;
+
+    % Left panel: dari kiri ke sebelum divider
+    app.LeftPanel.Position = [margin, margin, divX - margin - gap - dividerWidth, 1 - 2*margin];
+
+    % Divider: tepat di posisi divider
+    app.Divider.Position = [divX - dividerWidth/2, 0, dividerWidth, 1];
+
+    % Right panel: dari setelah divider ke kanan
+    app.RightPanel.Position = [divX + dividerWidth/2 + gap, margin, 1 - divX - dividerWidth/2 - gap - margin, 1 - 2*margin];
+end
+
+function setupDividerCallbacks(app)
+% Setup mouse callbacks untuk drag divider
+    app.Figure.WindowButtonDownFcn   = @(~, ~) onDividerMouseDown(app);
+    app.Figure.WindowButtonMotionFcn  = @(~, ~) onDividerMouseMove(app);
+    app.Figure.WindowButtonUpFcn      = @(~, ~) onDividerMouseUp(app);
+    app.Figure.SizeChangedFcn         = @(~, ~) updatePanelPositions(app);
+end
+
+function onDividerMouseDown(app)
+% Cek apakah klik mouse dekat dengan divider
+    figPos = app.Figure.Position;
+    mouseX = app.Figure.CurrentPoint(1);  % posisi X mouse dalam pixel
+    dividerPixelX = figPos(3) * app.DividerPos;
+
+    % Toleransi 10 pixel
+    if abs(mouseX - dividerPixelX) < 10
+        app.IsDragging = true;
+        app.Figure.Pointer = 'left';  % cursor resize
+    end
+end
+
+function onDividerMouseMove(app)
+% Update posisi divider saat dragging
+    if app.IsDragging
+        figPos = app.Figure.Position;
+        mouseX = app.Figure.CurrentPoint(1);
+
+        % Konversi ke posisi normalized
+        newPos = mouseX / figPos(3);
+
+        % Batasi: minimum 15%, maksimum 60%
+        newPos = max(0.15, min(0.60, newPos));
+
+        app.DividerPos = newPos;
+        updatePanelPositions(app);
+    else
+        % Highlight divider saat hover
+        figPos = app.Figure.Position;
+        mouseX = app.Figure.CurrentPoint(1);
+        dividerPixelX = figPos(3) * app.DividerPos;
+
+        if abs(mouseX - dividerPixelX) < 10
+            app.Figure.Pointer = 'left';
+        else
+            app.Figure.Pointer = 'arrow';
+        end
+    end
+end
+
+function onDividerMouseUp(app)
+% Selesai dragging
+    app.IsDragging = false;
+    app.Figure.Pointer = 'arrow';
+end
 
 
 

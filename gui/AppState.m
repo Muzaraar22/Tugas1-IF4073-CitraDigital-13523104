@@ -23,6 +23,9 @@ classdef AppState < handle
         Figure     = [];
         LeftPanel  = [];
         RightPanel = [];
+        Divider    = [];    % panel pemisah yang bisa di-drag
+        DividerPos = 0.27; % posisi divider (normalized 0-1, default 27%)
+        IsDragging = false; % status dragging
     end
 
     properties
