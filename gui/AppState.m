@@ -7,6 +7,7 @@ classdef AppState < handle
         Result     = [];    % citra hasil chaining ([] = belum ada)
         Reference  = [];    % citra referensi untuk specification
         Steps      = {};    % riwayat langkah: cell array of string
+        History    = {};    % tumpukan undo: cell of struct (.Result, .Steps)
         DatasetIdx = [];    % struktur dataset dari datasetIndex()
         OutFolder  = 'out'; % tujuan rekapan CSV dan figure batch
 
@@ -34,6 +35,12 @@ classdef AppState < handle
         IntensitySMin = []; IntensitySMax = [];
         IntensityGrid = []; IntensityGrayHost = []; IntensityRGBHost = [];
         IntensityRGBIn = []; IntensityRGBOut = [];
+
+        % panel image arithmetic
+        ArithImage = []; ArithOperation = []; ArithOperand = []; ArithInfo = [];
+
+        % tombol aksi
+        UndoButton = [];
 
         % panel equalization
         EqualVariant = [];

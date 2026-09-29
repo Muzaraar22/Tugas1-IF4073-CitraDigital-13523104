@@ -18,7 +18,8 @@ end
 
 dirs = dir(rootFolder);
 dirs = dirs([dirs.isdir]);
-dirs = dirs(~ismember({dirs.name}, {'.', '..'}));
+% tempProcess = hasil antara buatan GUI
+dirs = dirs(~ismember({dirs.name}, {'.', '..', 'tempProcess'}));
 [~, urutan] = sort({dirs.name});   % urutkan biar dropdown konsisten
 dirs = dirs(urutan);
 

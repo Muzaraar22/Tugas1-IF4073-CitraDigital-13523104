@@ -2,7 +2,7 @@ function [result, methodName, paramText] = applyEnhancement(img, technique, para
 % applyEnhancement - titik masuk tunggal semua teknik enhancement
 %
 % img       : citra grayscale (2D) atau RGB (3D), uint8
-% technique : 'intensity' | 'equalization' | 'specification' | 'filtering'
+% technique : 'intensity' | 'equalization' | 'specification' | 'filtering' | 'arithmetic'
 % params    : struct field sesuai teknik (lihat daftar di bawah)
 %
 % result     : citra hasil enhancement (uint8, dimensi sama dengan img)
@@ -25,6 +25,10 @@ function [result, methodName, paramText] = applyEnhancement(img, technique, para
 %                 .kernel .normalizeKernel .windowSize
 %                 jenis 'linear'  : .kernelSource + param kernel terkait
 %                 jenis 'median'  : .windowSize
+%   arithmetic    .operation .operand .operandName .imageName
+%                 operation 'add' (img + operand) | 'subtract' (img - operand)
+%                           | 'reverse' (operand - img)
+%                 operand   : citra uint8 dengan ukuran dan jumlah kanal sama dengan img
 
 if nargin < 2 || isempty(technique)
     error('applyEnhancement:teknikKosong', 'Teknik enhancement belum dipilih.');
@@ -46,6 +50,9 @@ switch lower(technique)
 
     case 'filtering'
         [result, methodName, paramText] = applyFiltering(img, params);
+
+    case 'arithmetic'
+        [result, methodName, paramText] = applyArithmetic(img, params);
 
     otherwise
         error('applyEnhancement:teknikTidakDikenal', 'Teknik enhancement tidak dikenal: %s', technique);
@@ -163,6 +170,51 @@ switch mode
     otherwise
         error('applyEnhancement:modeTidakDikenal', 'Mode intensity tidak dikenal: %s. Pilih negative, log, power, stretch, atau stretchRGB.', mode);
 end
+end
+
+% ---------------------------------------------------------------------------
+function [result, methodName, paramText] = applyArithmetic(img, params)
+
+operation = lower(getText(params, 'operation', 'subtract'));
+operand   = getValue(params, 'operand', []);
+name      = getText(params, 'operandName', 'operan');
+nameImg   = getText(params, 'imageName', 'citra');   % nama citra pertama (img)
+
+if isempty(operand)
+    error('applyEnhancement:operanKosong', ...
+        'Citra kedua belum dipilih. Simpan hasil ke temp dulu, atau pilih citra masukan asli.');
+end
+validateattributes(operand, {'uint8'}, {'nonempty'}, 'applyEnhancement:arithmetic', 'operand');
+
+% cek size
+if size(img, 3) ~= size(operand, 3)
+    error('applyEnhancement:kanalBeda', ...
+        ['Jumlah kanal berbeda: "%s" %d kanal, "%s" %d kanal. ' ...
+         'Kedua citra harus sama-sama berwarna atau sama-sama abu-abu.'], ...
+        nameImg, size(img, 3), name, size(operand, 3));
+end
+if size(img, 1) ~= size(operand, 1) || size(img, 2) ~= size(operand, 2)
+    error('applyEnhancement:ukuranBeda', ...
+        'Ukuran citra berbeda: "%s" %dx%d, "%s" %dx%d. Operasi hanya untuk ukuran yang sama.', ...
+        nameImg, size(img, 1), size(img, 2), name, size(operand, 1), size(operand, 2));
+end
+
+switch operation
+    case 'add'
+        methodName = 'Image Arithmetic - penjumlahan';
+        paramText  = sprintf('%s + %s', nameImg, name);
+    case 'subtract'
+        methodName = 'Image Arithmetic - pengurangan';
+        paramText  = sprintf('%s - %s', nameImg, name);
+    case 'reverse'
+        methodName = 'Image Arithmetic - pengurangan terbalik';
+        paramText  = sprintf('%s - %s', name, nameImg);
+    otherwise
+        error('applyEnhancement:operasiTidakDikenal', ...
+            'Operasi tidak dikenal: %s. Pilih add, subtract, atau reverse.', operation);
+end
+
+result = imageArithmetic(img, operand, operation);
 end
 
 % ---------------------------------------------------------------------------

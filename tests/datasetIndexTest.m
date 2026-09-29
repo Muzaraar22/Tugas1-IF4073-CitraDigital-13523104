@@ -56,6 +56,17 @@ classdef datasetIndexTest < matlab.unittest.TestCase
             testCase.verifyNumElements(idx, 5);
         end
 
+        function tempProcessFolderIsIgnored(testCase)
+            root = tempname;
+            mkdir(fullfile(root, '1. Kasus'));
+            mkdir(fullfile(root, 'tempProcess'));
+            testCase.addTeardown(@() rmdir(root, 's'));
+            imwrite(zeros(4, 'uint8'), fullfile(root, 'tempProcess', 'proc_001.png'));
+
+            idx = datasetIndex(root);
+            testCase.verifyEqual({idx.folder}, {'1. Kasus'});
+        end
+
         function missingFolderThrows(testCase)
             testCase.verifyError(@() datasetIndex('folder-yang-tidak-ada'), ...
                 'datasetIndex:folderTidakDitemukan');

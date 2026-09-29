@@ -21,7 +21,7 @@ app.OutFolder  = 'out';
 
 % placeholder panel parameter per teknik; diisi oleh buildIntensityPanel dkk
 app.Panels = struct('intensity', [], 'equalization', [], ...
-    'specification', [], 'filtering', []);
+    'specification', [], 'filtering', [], 'arithmetic', []);
 
 app.Figure = uifigure( ...
     'Name',             'Analisis dan Perbaikan Kualitas Citra - IF4073', ...
@@ -76,7 +76,7 @@ end
 function app = buildLeftPanel(app)
 
 p = uigridlayout(app.LeftPanel, [7 1]);
-p.RowHeight = {22, 26, 108, 30, 26, '1x', 26};
+p.RowHeight = {22, 26, 108, 30, 26, '1x', 58};
 p.RowSpacing = 4;
 p.Padding = [8 8 8 8];
 p.BackgroundColor = [0.96 0.96 0.96];
@@ -128,7 +128,8 @@ app.TechBox = uidropdown(techRow, ...
     'Items', {'Intensity Transformation', ...
               'Histogram Equalization', ...
               'Histogram Specification / Matching', ...
-              'Image Filtering'}, ...
+              'Image Filtering', ...
+              'Image Arithmetic'}, ...
     'Value', 'Intensity Transformation', ...
     'BackgroundColor', 'w');
 app.TechBox.ValueChangedFcn = @(~, ~) onTechniqueChanged(app);
@@ -142,8 +143,8 @@ app.InfoButton = uibutton(techRow, 'Text', 'i', ...
     'ButtonPushedFcn', @(~, ~) showTechniqueInfo(app));
 
 % --- panel parameter per teknik (hanya satu terlihat) -----------------------
-app.ParamStack = uigridlayout(p, [4 1]);
-app.ParamStack.RowHeight = {'1x','1x','1x','1x'};
+app.ParamStack = uigridlayout(p, [5 1]);
+app.ParamStack.RowHeight = {'1x','1x','1x','1x','1x'};
 app.ParamStack.RowSpacing = 0;
 app.ParamStack.Padding = [0 0 0 0];
 app.ParamStack.BackgroundColor = [0.96 0.96 0.96];
@@ -152,25 +153,50 @@ app = buildIntensityPanel(app);
 app = buildEqualizationPanel(app);
 app = buildSpecificationPanel(app);
 app = buildFilteringPanel(app);
+app = buildArithmeticPanel(app);
 
 % --- 3. aksi ---------------------------------------------------------------
-actionRow = uigridlayout(p, [1 3]);
+actionRow = uigridlayout(p, [2 3]);
+actionRow.RowHeight = {26, 26};
 actionRow.ColumnWidth = {'1x','1x','1x'};
+actionRow.RowSpacing = 6;
 actionRow.ColumnSpacing = 6;
 actionRow.Padding = [0 0 0 0];
 actionRow.BackgroundColor = [0.96 0.96 0.96];
 
-uibutton(actionRow, 'Text', 'Terapkan', ...
+% baris 1: Terapkan | Undo | Reset
+b1 = uibutton(actionRow, 'Text', 'Terapkan', ...
     'FontWeight', 'bold', ...
     'BackgroundColor', [0.20 0.55 0.35], ...
     'FontColor', 'w', ...
     'ButtonPushedFcn', @(~, ~) onApply(app));
-uibutton(actionRow, 'Text', 'Reset', ...
+app.UndoButton = uibutton(actionRow, 'Text', 'Undo', ...
+    'BackgroundColor', [0.85 0.85 0.85], ...
+    'Tooltip', 'Batalkan langkah terakhir (Terapkan atau Reset)', ...
+    'Enable', 'off', ...
+    'ButtonPushedFcn', @(~, ~) onUndo(app));
+b3 = uibutton(actionRow, 'Text', 'Reset', ...
     'BackgroundColor', [0.85 0.85 0.85], ...
     'ButtonPushedFcn', @(~, ~) onReset(app));
-uibutton(actionRow, 'Text', 'Simpan Rekapan', ...
+
+% baris 2: Simpan ke Temp | Kosongkan Temp | Simpan Rekapan
+b4 = uibutton(actionRow, 'Text', 'Simpan ke Temp', ...
+    'BackgroundColor', [0.75 0.85 0.95], ...
+    'Tooltip', 'Simpan hasil saat ini ke dataset/tempProcess supaya bisa dipakai sebagai operan Image Arithmetic', ...
+    'ButtonPushedFcn', @(~, ~) onSaveTemp(app));
+b5 = uibutton(actionRow, 'Text', 'Kosongkan Temp', ...
+    'BackgroundColor', [0.95 0.75 0.75], ...
+    'Tooltip', 'Hapus semua citra di dataset/tempProcess', ...
+    'ButtonPushedFcn', @(~, ~) onClearTemp(app));
+b6 = uibutton(actionRow, 'Text', 'Simpan Rekapan', ...
     'BackgroundColor', [0.95 0.85 0.55], ...
     'ButtonPushedFcn', @(~, ~) onSaveRecord(app));
+
+btns = {b1, app.UndoButton, b3, b4, b5, b6};
+for k = 1:6
+    btns{k}.Layout.Row    = ceil(k / 3);
+    btns{k}.Layout.Column = mod(k - 1, 3) + 1;
+end
 
 % letakkan panel sesuai urutan row yang sudah ditentukan
 app.FolderBox.Layout.Row = 2;
@@ -460,6 +486,60 @@ updateFilteringFields(app);
 end
 
 % ---------------------------------------------------------------------------
+function app = buildArithmeticPanel(app)
+
+pnl = uipanel(app.ParamStack, 'Title', '', 'BorderType', 'line', ...
+    'BackgroundColor', [0.99 0.99 0.99]);
+pnl.Layout.Row = 5;
+app.Panels.arithmetic = pnl;
+
+g = uigridlayout(pnl, [5 2]);
+g.RowHeight   = {28, 28, 28, 44, '1x'};
+g.ColumnWidth = {90, '1x'};
+g.RowSpacing  = 10;
+g.ColumnSpacing = 6;
+g.Padding = [10 10 10 10];
+g.BackgroundColor = [0.99 0.99 0.99];
+
+uilabel(g, 'Text', 'Citra 1');
+app.ArithImage = uidropdown(g, ...
+    'Items', {currentResultLabel()}, ...
+    'BackgroundColor', 'w', ...
+    'Tooltip', ['Citra pertama: hasil saat ini, citra masukan asli, atau hasil yang disimpan ' ...
+                'lewat "Simpan ke Temp"']);
+app.ArithImage.ValueChangedFcn = @(~, ~) updateOperandInfo(app);
+
+uilabel(g, 'Text', 'Operasi');
+app.ArithOperation = uidropdown(g, ...
+    'Items', {'Tambah (Citra 1 + Citra 2)', 'Kurang (Citra 1 - Citra 2)'}, ...
+    'ItemsData', {'add', 'subtract'}, ...
+    'Value', 'subtract', ...
+    'BackgroundColor', 'w', ...
+    'Tooltip', 'Hasil di luar 0-255 di-clip. Untuk Citra 2 - Citra 1, tukar pilihan kedua citra.');
+
+uilabel(g, 'Text', 'Citra 2');
+app.ArithOperand = uidropdown(g, ...
+    'Items', {originalOperandLabel()}, ...
+    'BackgroundColor', 'w', ...
+    'Tooltip', 'Citra kedua: hasil saat ini, citra masukan asli, atau file di dataset/tempProcess');
+app.ArithOperand.ValueChangedFcn = @(~, ~) updateOperandInfo(app);
+
+app.ArithInfo = uilabel(g, 'Text', '', 'WordWrap', 'on', 'FontSize', 10, ...
+    'VerticalAlignment', 'top');
+app.ArithInfo.Layout.Row = 4;
+app.ArithInfo.Layout.Column = [1 2];
+
+hint = uilabel(g, 'Text', ['Kedua citra harus berukuran dan berjumlah kanal sama. ' ...
+    'Simpan hasil dengan "Simpan ke Temp" agar muncul di daftar pilihan.'], ...
+    'WordWrap', 'on', 'FontSize', 9, 'FontColor', [0.3 0.3 0.3], ...
+    'VerticalAlignment', 'top');
+hint.Layout.Row = 5;
+hint.Layout.Column = [1 2];
+
+refreshOperandList(app);
+end
+
+% ---------------------------------------------------------------------------
 function app = buildRightPanel(app)
 
 g = uigridlayout(app.RightPanel, [4 2]);
@@ -621,6 +701,7 @@ try
     app.Original = img;
     app.Result   = [];
     app.Steps    = {};
+    resetHistory(app);
     fillSourceRange(app);
 
     % Update info label
@@ -675,6 +756,7 @@ end
 app.Original = img;
 app.Result   = [];
 app.Steps    = {};
+resetHistory(app);
 fillSourceRange(app);
 
 % baris kanal histogram hanya relevan untuk citra berwarna
@@ -703,6 +785,7 @@ tech = app.TechBox.Value;
     app.Panels.equalization.Visible    = strcmp(tech, 'Histogram Equalization');
     app.Panels.specification.Visible   = strcmp(tech, 'Histogram Specification / Matching');
     app.Panels.filtering.Visible       = strcmp(tech, 'Image Filtering');
+    app.Panels.arithmetic.Visible      = strcmp(tech, 'Image Arithmetic');
 
     % uigridlayout tetap mengalokasikan tinggi untuk baris yang komponennya
     % disembunyikan, jadi baris panel non-aktif dilipat supaya panel yang aktif
@@ -712,10 +795,14 @@ tech = app.TechBox.Value;
     setPanelRowVisible(app, 'equalization',  app.Panels.equalization.Visible);
     setPanelRowVisible(app, 'specification', app.Panels.specification.Visible);
     setPanelRowVisible(app, 'filtering',     app.Panels.filtering.Visible);
+    setPanelRowVisible(app, 'arithmetic',    app.Panels.arithmetic.Visible);
 
 % tampilkan field yang relevan untuk teknik terpilih
 updateIntensityFields(app);
 updateFilteringFields(app);
+if strcmp(tech, 'Image Arithmetic')
+    refreshOperandList(app);    % daftar temp bisa berubah sejak terakhir dibuka
+end
 end
 
 function showTechniqueInfo(app)
@@ -733,6 +820,8 @@ switch tech
         title = 'Histogram Specification / Matching';
     case 'Image Filtering'
         title = 'Image Filtering';
+    case 'Image Arithmetic'
+        title = 'Image Arithmetic';
 end
 
 % Tampilkan dialog info
@@ -894,6 +983,7 @@ end
 app.IntensityR1.Value = double(min(gray(:)));
 app.IntensityR2.Value = double(max(gray(:)));
 updateStretchRGBAvailability(app);
+updateOperandInfo(app);
 end
 
 function onUseReference(app)
@@ -948,6 +1038,9 @@ base = app.Result;
 if isempty(base)
     base = app.Original;
 end
+if strcmp(tech, 'arithmetic')
+    base = params.image;    % Citra 1 dipilih sendiri di panel, tidak otomatis hasil terakhir
+end
 
 try
     [result, methodName, paramText] = applyEnhancement(base, tech, params);
@@ -957,19 +1050,231 @@ catch ex
     return;
 end
 
+pushHistory(app);      % simpan keadaan sebelum langkah ini supaya bisa di-undo
 app.Result = result;
 app.Steps{end + 1} = sprintf('%s | %s', methodName, paramText);
 
-app.LogText.Value = [{'Langkah enhancement yang sudah diterapkan:'}, ...
-                     app.Steps];
+showLog(app);
 refreshAll(app);
 end
 
 function onReset(app)
+if ~isempty(app.Result)
+    pushHistory(app);
+end
 app.Result = [];
 app.Steps  = {};
-app.LogText.Value = {'Belum ada langkah enhancement. Citra dikembalikan ke masukan.'};
+showLog(app);
 refreshAll(app);
+end
+
+% ---------------------------------------------------------------------------
+% Undo dan hasil antara (tempProcess)
+% ---------------------------------------------------------------------------
+
+function n = maxHistory()
+n = 20;
+end
+
+function pushHistory(app)
+st.Result = app.Result;
+st.Steps  = app.Steps;
+app.History{end + 1} = st;
+if numel(app.History) > maxHistory()
+    app.History(1) = [];        % buang history terlama
+end
+updateUndoButton(app);
+end
+
+function resetHistory(app)
+app.History = {};
+updateUndoButton(app);
+end
+
+function updateUndoButton(app)
+if isempty(app.UndoButton) || ~isvalid(app.UndoButton)
+    return;
+end
+if isempty(app.History)
+    app.UndoButton.Enable = 'off';
+else
+    app.UndoButton.Enable = 'on';
+end
+end
+
+function onUndo(app)
+if isempty(app.History)
+    return;
+end
+st = app.History{end};
+app.History(end) = [];
+app.Result = st.Result;
+app.Steps  = st.Steps;      %steps juga diundo
+showLog(app);
+refreshAll(app);
+updateUndoButton(app);
+end
+
+function showLog(app)
+if isempty(app.Steps)
+    app.LogText.Value = {'Belum ada langkah enhancement. Citra dikembalikan ke masukan.'};
+else
+    app.LogText.Value = [{'Langkah enhancement yang sudah diterapkan:'}, app.Steps];
+end
+end
+
+function onSaveTemp(app)
+if isempty(app.Original)
+    uialert(app.Figure, 'Muat citra dulu sebelum menyimpan hasil.', 'Citra belum dimuat');
+    return;
+end
+
+img = app.Result;
+sumber = 'hasil saat ini';
+if isempty(img)
+    img = app.Original;
+    sumber = 'citra masukan (belum ada hasil)';
+end
+
+try
+    name = tempProcess('save', img);
+catch ex
+    uialert(app.Figure, sprintf('%s\n\n%s', ex.message, ...
+        'Periksa folder dataset dan hak tulis.'), 'Gagal menyimpan ke temp');
+    return;
+end
+
+refreshOperandList(app);
+app.LogText.Value = [app.LogText.Value(:); {sprintf('Disimpan ke temp: %s (%s)', name, sumber)}];
+end
+
+function onClearTemp(app)
+names = tempProcess('list');
+if isempty(names)
+    uialert(app.Figure, 'Folder temp sudah kosong.', 'Kosongkan Temp', 'Icon', 'info');
+    return;
+end
+
+pilihan = uiconfirm(app.Figure, ...
+    sprintf('Hapus %d citra di %s?', numel(names), tempProcess('folder')), ...
+    'Kosongkan Temp', 'Options', {'Hapus', 'Batal'}, ...
+    'DefaultOption', 'Batal', 'CancelOption', 'Batal', 'Icon', 'warning');
+if ~strcmp(pilihan, 'Hapus')
+    return;
+end
+
+tempProcess('clear');
+refreshOperandList(app);
+end
+
+function label = originalOperandLabel()
+label = '[Citra masukan asli]';
+end
+
+function label = currentResultLabel()
+label = '[Hasil saat ini]';
+end
+
+function refreshOperandList(app)
+% samakan daftar pilihan kedua citra dengan isi folder temp; pilihan lama dipertahankan kalau masih ada
+temp = tempProcess('list');
+itemsImg = [{currentResultLabel(), originalOperandLabel()}, temp];
+itemsOp  = [{originalOperandLabel(), currentResultLabel()}, temp];
+
+curImg = app.ArithImage.Value;
+curOp  = app.ArithOperand.Value;
+app.ArithImage.Items   = itemsImg;
+app.ArithOperand.Items = itemsOp;
+if any(strcmp(curImg, itemsImg)), app.ArithImage.Value = curImg; else, app.ArithImage.Value = itemsImg{1}; end
+if any(strcmp(curOp, itemsOp)),   app.ArithOperand.Value = curOp; else, app.ArithOperand.Value = itemsOp{1}; end
+updateOperandInfo(app);
+end
+
+function updateOperandInfo(app)
+% tampilkan ukuran kedua citra dan tandai kalau tidak cocok satu sama lain
+[ok1, sz1, ch1] = sourceInfo(app, app.ArithImage.Value);
+[ok2, sz2, ch2] = sourceInfo(app, app.ArithOperand.Value);
+
+if ~ok1 || ~ok2
+    if isempty(app.Original)
+        app.ArithInfo.Text = 'Muat citra dulu.';
+        app.ArithInfo.FontColor = [0.3 0.3 0.3];
+    else
+        app.ArithInfo.Text = 'Berkas tidak terbaca. Kosongkan temp atau simpan ulang.';
+        app.ArithInfo.FontColor = [0.7 0.1 0.1];
+    end
+    return;
+end
+
+msg = sprintf('Citra 1: %dx%d, %s | Citra 2: %dx%d, %s', ...
+    sz1(1), sz1(2), channelName(ch1), sz2(1), sz2(2), channelName(ch2));
+if any(sz1 ~= sz2) || ch1 ~= ch2
+    msg = [msg '. TIDAK COCOK, operasi akan ditolak.'];
+    app.ArithInfo.FontColor = [0.7 0.1 0.1];
+else
+    app.ArithInfo.FontColor = [0.2 0.2 0.2];
+end
+app.ArithInfo.Text = msg;
+end
+
+function [ok, sz, nCh] = sourceInfo(app, sel)
+% ukuran dan jumlah kanal sumber tanpa membaca seluruh piksel (file temp lewat imfinfo)
+ok = false; sz = [0 0]; nCh = 0;
+try
+    if any(strcmp(sel, {originalOperandLabel(), currentResultLabel()}))
+        % hasil selalu berukuran sama dengan citra masukan
+        if isempty(app.Original), return; end
+        sz = [size(app.Original, 1), size(app.Original, 2)];
+        nCh = size(app.Original, 3);
+    else
+        info = imfinfo(fullfile(tempProcess('folder'), sel));
+        sz = [info.Height, info.Width];
+        nCh = 1 + 2 * strcmpi(info.ColorType, 'truecolor');
+    end
+    ok = true;
+catch
+    ok = false;
+end
+end
+
+function t = channelName(nCh)
+if nCh == 3
+    t = 'RGB';
+else
+    t = 'abu-abu';
+end
+end
+
+function [img, name] = readSource(app, sel)
+% baca citra untuk dropdown Citra 1 / Citra 2
+if strcmp(sel, originalOperandLabel())
+    img = app.Original;
+    name = 'citra masukan asli';
+    return;
+end
+
+if strcmp(sel, currentResultLabel())
+    if isempty(app.Result)
+        img = app.Original;
+        name = 'citra masukan asli (belum ada hasil)';
+    else
+        img = app.Result;
+        name = 'hasil saat ini';
+    end
+    return;
+end
+
+filePath = fullfile(tempProcess('folder'), sel);
+if ~isfile(filePath)
+    refreshOperandList(app);
+    error('Berkas "%s" sudah tidak ada. Daftar pilihan sudah disegarkan, pilih lagi.', sel);
+end
+try
+    img = imread(filePath);
+catch ex
+    error('Berkas "%s" tidak bisa dibaca: %s', sel, ex.message);
+end
+name = sel;
 end
 
 function onSaveRecord(app)
@@ -1051,6 +1356,17 @@ switch app.TechBox.Value
                 params.sharpWeight = app.FilterParam1.Value;
             end
         end
+
+    case 'Image Arithmetic'
+        tech = 'arithmetic';
+        [img1, name1] = readSource(app, app.ArithImage.Value);
+        [img2, name2] = readSource(app, app.ArithOperand.Value);
+        params = struct( ...
+            'operation',   app.ArithOperation.Value, ...
+            'image',       img1, ...
+            'imageName',   name1, ...
+            'operand',     img2, ...
+            'operandName', name2);
 
     otherwise
         error('applyEnhancement:teknikTidakDikenal', ...
@@ -1213,6 +1529,7 @@ function setEmptyState(app)
 app.Original = [];
 app.Result   = [];
 app.Steps    = {};
+resetHistory(app);
 
 if isfield(app, 'LogText') && ~isempty(app.LogText)
     app.LogText.Value = {'Muat citra dulu, lalu pilih teknik enhancement.'};
@@ -1354,6 +1671,8 @@ switch tech
         tip = 'Menyesuaikan histogram citra dengan citra referensi.';
     case 'Image Filtering'
         tip = 'Filter linear (konvolusi) atau non-linear (median).';
+    case 'Image Arithmetic'
+        tip = 'Tambah/kurang dua citra berukuran sama, masing-masing dipilih dari hasil saat ini, citra asli, atau hasil yang disimpan ke temp.';
     otherwise
         tip = '';
 end
