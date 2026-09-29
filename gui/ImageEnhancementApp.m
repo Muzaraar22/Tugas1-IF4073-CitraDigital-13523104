@@ -21,7 +21,7 @@ app.OutFolder  = 'out';
 
 % placeholder panel parameter per teknik; diisi oleh buildIntensityPanel dkk
 app.Panels = struct('intensity', [], 'equalization', [], ...
-    'specification', [], 'filtering', []);
+    'specification', [], 'filtering', [], 'arithmetic', []);
 
 app.Figure = uifigure( ...
     'Name',             'Analisis dan Perbaikan Kualitas Citra - IF4073', ...
@@ -76,7 +76,7 @@ end
 function app = buildLeftPanel(app)
 
 p = uigridlayout(app.LeftPanel, [7 1]);
-p.RowHeight = {22, 26, 108, 30, 26, '1x', 26};
+p.RowHeight = {22, 26, 108, 30, 26, '1x', 58};
 p.RowSpacing = 4;
 p.Padding = [8 8 8 8];
 p.BackgroundColor = [0.96 0.96 0.96];
@@ -128,7 +128,8 @@ app.TechBox = uidropdown(techRow, ...
     'Items', {'Intensity Transformation', ...
               'Histogram Equalization', ...
               'Histogram Specification / Matching', ...
-              'Image Filtering'}, ...
+              'Image Filtering', ...
+              'Image Arithmetic'}, ...
     'Value', 'Intensity Transformation', ...
     'BackgroundColor', 'w');
 app.TechBox.ValueChangedFcn = @(~, ~) onTechniqueChanged(app);
@@ -142,8 +143,8 @@ app.InfoButton = uibutton(techRow, 'Text', 'i', ...
     'ButtonPushedFcn', @(~, ~) showTechniqueInfo(app));
 
 % --- panel parameter per teknik (hanya satu terlihat) -----------------------
-app.ParamStack = uigridlayout(p, [4 1]);
-app.ParamStack.RowHeight = {'1x','1x','1x','1x'};
+app.ParamStack = uigridlayout(p, [5 1]);
+app.ParamStack.RowHeight = {'1x','1x','1x','1x','1x'};
 app.ParamStack.RowSpacing = 0;
 app.ParamStack.Padding = [0 0 0 0];
 app.ParamStack.BackgroundColor = [0.96 0.96 0.96];
@@ -152,25 +153,50 @@ app = buildIntensityPanel(app);
 app = buildEqualizationPanel(app);
 app = buildSpecificationPanel(app);
 app = buildFilteringPanel(app);
+app = buildArithmeticPanel(app);
 
 % --- 3. aksi ---------------------------------------------------------------
-actionRow = uigridlayout(p, [1 3]);
+actionRow = uigridlayout(p, [2 3]);
+actionRow.RowHeight = {26, 26};
 actionRow.ColumnWidth = {'1x','1x','1x'};
+actionRow.RowSpacing = 6;
 actionRow.ColumnSpacing = 6;
 actionRow.Padding = [0 0 0 0];
 actionRow.BackgroundColor = [0.96 0.96 0.96];
 
-uibutton(actionRow, 'Text', 'Terapkan', ...
+% baris 1: Terapkan | Undo | Reset
+b1 = uibutton(actionRow, 'Text', 'Terapkan', ...
     'FontWeight', 'bold', ...
     'BackgroundColor', [0.20 0.55 0.35], ...
     'FontColor', 'w', ...
     'ButtonPushedFcn', @(~, ~) onApply(app));
-uibutton(actionRow, 'Text', 'Reset', ...
+app.UndoButton = uibutton(actionRow, 'Text', 'Undo', ...
+    'BackgroundColor', [0.85 0.85 0.85], ...
+    'Tooltip', 'Batalkan langkah terakhir (Terapkan atau Reset)', ...
+    'Enable', 'off', ...
+    'ButtonPushedFcn', @(~, ~) onUndo(app));
+b3 = uibutton(actionRow, 'Text', 'Reset', ...
     'BackgroundColor', [0.85 0.85 0.85], ...
     'ButtonPushedFcn', @(~, ~) onReset(app));
-uibutton(actionRow, 'Text', 'Simpan Rekapan', ...
+
+% baris 2: Simpan ke Temp | Kosongkan Temp | Simpan Rekapan
+b4 = uibutton(actionRow, 'Text', 'Simpan ke Temp', ...
+    'BackgroundColor', [0.75 0.85 0.95], ...
+    'Tooltip', 'Simpan hasil saat ini ke dataset/tempProcess supaya bisa dipakai sebagai operan Image Arithmetic', ...
+    'ButtonPushedFcn', @(~, ~) onSaveTemp(app));
+b5 = uibutton(actionRow, 'Text', 'Kosongkan Temp', ...
+    'BackgroundColor', [0.95 0.75 0.75], ...
+    'Tooltip', 'Hapus semua citra di dataset/tempProcess', ...
+    'ButtonPushedFcn', @(~, ~) onClearTemp(app));
+b6 = uibutton(actionRow, 'Text', 'Simpan Rekapan', ...
     'BackgroundColor', [0.95 0.85 0.55], ...
     'ButtonPushedFcn', @(~, ~) onSaveRecord(app));
+
+btns = {b1, app.UndoButton, b3, b4, b5, b6};
+for k = 1:6
+    btns{k}.Layout.Row    = ceil(k / 3);
+    btns{k}.Layout.Column = mod(k - 1, 3) + 1;
+end
 
 % letakkan panel sesuai urutan row yang sudah ditentukan
 app.FolderBox.Layout.Row = 2;
@@ -191,19 +217,21 @@ pnl = uipanel(app.ParamStack, 'Title', '', 'BorderType', 'line', ...
 pnl.Layout.Row = 1;
 app.Panels.intensity = pnl;
 
-g = uigridlayout(pnl, [4 2]);
-g.RowHeight   = {22, 22, 22, 22};
+g = uigridlayout(pnl, [5 2]);
+g.RowHeight   = {28, 28, 28, 'fit', 0};
 g.ColumnWidth = {110, '1x'};
-g.RowSpacing  = 3;
-g.ColumnSpacing = 4;
-g.Padding = [6 6 6 6];
+g.RowSpacing  = 10;
+g.ColumnSpacing = 6;
+g.Padding = [10 10 10 10];
 g.BackgroundColor = [0.99 0.99 0.99];
+app.IntensityGrid = g;
 
 uilabel(g, 'Text', 'Mode');
 app.IntensityMode = uidropdown(g, ...
-    'Items', {'negative', 'log', 'power', 'stretch'}, ...
+    'Items', {'negative', 'log', 'power', 'stretch', 'stretchRGB'}, ...
     'Value', 'stretch', ...
-    'BackgroundColor', 'w');
+    'BackgroundColor', 'w', ...
+    'Tooltip', 'stretchRGB: contrast stretching per kanal R,G,B (hanya untuk citra berwarna)');
 app.IntensityMode.ValueChangedFcn = @(~, ~) updateIntensityFields(app);
 
 uilabel(g, 'Text', 'c (log / power)');
@@ -215,20 +243,93 @@ uilabel(g, 'Text', 'gamma (power)');
 app.IntensityGamma = uieditfield(g, 'numeric', 'Value', 1.0, ...
     'Tooltip', 'gamma < 1 mencerahkan, gamma > 1 menggelapkan');
 
-uilabel(g, 'Text', 'r1, r2 (stretch)');
-boundsRow = uigridlayout(g, [1 3]);
+% --- stretch (grayscale): satu rentang input dan satu rentang target --------
+grayHost = uigridlayout(g, [2 2]);
+grayHost.Layout.Row = 4;
+grayHost.Layout.Column = [1 2];
+grayHost.ColumnWidth = {110, '1x'};
+grayHost.RowHeight = {28, 28};
+grayHost.RowSpacing = 10;
+grayHost.ColumnSpacing = 6;
+grayHost.Padding = [0 0 0 0];
+grayHost.BackgroundColor = [0.99 0.99 0.99];
+app.IntensityGrayHost = grayHost;
+
+uilabel(grayHost, 'Text', 'Input min, maks');
+boundsRow = uigridlayout(grayHost, [1 3]);
 boundsRow.ColumnWidth = {'1x', '1x', 62};
+boundsRow.ColumnSpacing = 6;
 boundsRow.Padding = [0 0 0 0];
 boundsRow.BackgroundColor = [0.99 0.99 0.99];
 app.IntensityR1 = uieditfield(boundsRow, 'numeric', 'Value', 0, ...
-    'Tooltip', 'Batas bawah rentang yang akan dipetakan ke 0');
+    'Tooltip', 'Batas bawah rentang input (default: min grayscale citra)');
 app.IntensityR2 = uieditfield(boundsRow, 'numeric', 'Value', 255, ...
-    'Tooltip', 'Batas atas rentang yang akan dipetakan ke 255');
+    'Tooltip', 'Batas atas rentang input (default: maks grayscale citra)');
 uibutton(boundsRow, 'Text', 'Ambil', 'FontSize', 9, ...
-    'Tooltip', 'Isi r1 dan r2 dengan min/maks citra yang sedang dimuat', ...
+    'Tooltip', 'Isi dengan min/maks grayscale citra yang sedang dimuat', ...
     'ButtonPushedFcn', @(~, ~) onTakeBounds(app));
 
-updateIntensityFields(app);
+uilabel(grayHost, 'Text', 'Target min, maks');
+targetRow = uigridlayout(grayHost, [1 2]);
+targetRow.ColumnWidth = {'1x', '1x'};
+targetRow.ColumnSpacing = 6;
+targetRow.Padding = [0 0 0 0];
+targetRow.BackgroundColor = [0.99 0.99 0.99];
+app.IntensitySMin = uieditfield(targetRow, 'numeric', 'Value', 0, ...
+    'Limits', [0 255], 'Tooltip', 'Nilai target untuk batas bawah input (default 0)');
+app.IntensitySMax = uieditfield(targetRow, 'numeric', 'Value', 255, ...
+    'Limits', [0 255], 'Tooltip', 'Nilai target untuk batas atas input (default 255)');
+
+% --- stretchRGB: rentang input dan target per kanal -----------------------
+rgbHost = uigridlayout(g, [7 2]);
+rgbHost.Layout.Row = 5;
+rgbHost.Layout.Column = [1 2];
+rgbHost.ColumnWidth = {110, '1x'};
+rgbHost.RowHeight = repmat({28}, 1, 7);
+rgbHost.RowSpacing = 10;
+rgbHost.ColumnSpacing = 6;
+rgbHost.Padding = [0 0 0 0];
+rgbHost.BackgroundColor = [0.99 0.99 0.99];
+app.IntensityRGBHost = rgbHost;
+
+nama  = {'R', 'G', 'B'};
+warna = {[0.75 0 0], [0 0.55 0], [0 0 0.75]};
+app.IntensityRGBIn  = gobjects(3, 2);
+app.IntensityRGBOut = gobjects(3, 2);
+
+for k = 1:3
+    lbl = uilabel(rgbHost, 'Text', sprintf('Input %s min, maks', nama{k}));
+    lbl.FontColor = warna{k};
+    row = uigridlayout(rgbHost, [1 2]);
+    row.ColumnSpacing = 6;
+    row.Padding = [0 0 0 0];
+    row.BackgroundColor = [0.99 0.99 0.99];
+    app.IntensityRGBIn(k, 1) = uieditfield(row, 'numeric', 'Value', 0, ...
+        'Limits', [0 255], 'Tooltip', sprintf('Min kanal %s pada citra', nama{k}));
+    app.IntensityRGBIn(k, 2) = uieditfield(row, 'numeric', 'Value', 255, ...
+        'Limits', [0 255], 'Tooltip', sprintf('Maks kanal %s pada citra', nama{k}));
+end
+
+for k = 1:3
+    lbl = uilabel(rgbHost, 'Text', sprintf('Target %s min, maks', nama{k}));
+    lbl.FontColor = warna{k};
+    row = uigridlayout(rgbHost, [1 2]);
+    row.ColumnSpacing = 6;
+    row.Padding = [0 0 0 0];
+    row.BackgroundColor = [0.99 0.99 0.99];
+    app.IntensityRGBOut(k, 1) = uieditfield(row, 'numeric', 'Value', 0, ...
+        'Limits', [0 255], 'Tooltip', sprintf('Target min kanal %s (default 0)', nama{k}));
+    app.IntensityRGBOut(k, 2) = uieditfield(row, 'numeric', 'Value', 255, ...
+        'Limits', [0 255], 'Tooltip', sprintf('Target maks kanal %s (default 255)', nama{k}));
+end
+
+uilabel(rgbHost, 'Text', '');
+btn = uibutton(rgbHost, 'Text', 'Ambil min/maks per kanal', ...
+    'Tooltip', 'Isi rentang input dengan min/maks kanal R,G,B citra yang sedang dimuat', ...
+    'ButtonPushedFcn', @(~, ~) onTakeBounds(app));
+btn.Layout.Column = 2;
+
+updateStretchRGBAvailability(app);
 end
 
 % ---------------------------------------------------------------------------
@@ -310,10 +411,10 @@ pnl = uipanel(app.ParamStack, 'Title', '', 'BorderType', 'line', ...
 pnl.Layout.Row = 4;
 app.Panels.filtering = pnl;
 
-g = uigridlayout(pnl, [4 2]);
-g.RowHeight   = {22, 22, 22, '1x'};
+g = uigridlayout(pnl, [6 2]);
+g.RowHeight   = {22, 22, 22, 22, 22, '1x'};
 g.ColumnWidth = {90, '1x'};
-g.RowSpacing  = 3;
+g.RowSpacing  = 6;
 g.ColumnSpacing = 4;
 g.Padding = [6 6 6 6];
 g.BackgroundColor = [0.99 0.99 0.99];
@@ -328,36 +429,114 @@ uilabel(g, 'Text', 'Kernel');
 app.KernelSource = uidropdown(g, ...
     'Items', {'gaussian', 'mean', 'sharpen', 'custom'}, ...
     'Value', 'gaussian', ...
-    'BackgroundColor', 'w');
-app.KernelSource.ValueChangedFcn = @(~, ~) updateFilteringFields(app);
+    'BackgroundColor', 'w', ...
+    'Tooltip', 'Memilih kernel bawaan mengisi grid di bawah. Mengubah isi grid otomatis menjadi custom.');
+app.KernelSource.ValueChangedFcn = @(~, ~) onKernelSourceChanged(app);
 
 uilabel(g, 'Text', 'Ukuran');
 app.KernelSize = uidropdown(g, ...
     'Items', {'3', '5', '7', '9'}, 'Value', '3', ...
     'BackgroundColor', 'w');
-app.KernelSize.ValueChangedFcn = @(~, ~) rebuildKernelGrid(app);
+app.KernelSize.ValueChangedFcn = @(~, ~) onKernelSizeChanged(app);
 
-paramRow = uigridlayout(g, [1 2]);
-paramRow.ColumnWidth = {'1x', '1x'};
-paramRow.ColumnSpacing = 4;
-paramRow.Padding = [0 0 0 0];
-paramRow.BackgroundColor = [0.99 0.99 0.99];
-app.FilterParam1 = uieditfield(paramRow, 'numeric', 'Value', 2.0, ...
+% satu sel untuk parameter: field yang tampil bergantung pada jenis/kernel
+app.FilterParamLabel = uilabel(g, 'Text', 'Sigma');
+paramCell = uigridlayout(g, [1 1]);
+paramCell.Padding = [0 0 0 0];
+paramCell.BackgroundColor = [0.99 0.99 0.99];
+app.FilterParam1 = uieditfield(paramCell, 'numeric', 'Value', 2.0, ...
     'Tooltip', 'Gaussian: sigma | Sharpen: bobot');
-app.FilterParam2 = uieditfield(paramRow, 'numeric', 'Value', 15, ...
+app.FilterParam1.Layout.Row = 1;
+app.FilterParam1.Layout.Column = 1;
+app.FilterParam1.ValueChangedFcn = @(~, ~) fillKernelTable(app);
+app.FilterParam2 = uieditfield(paramCell, 'numeric', 'Value', 15, ...
     'Tooltip', 'Median: ukuran window');
+app.FilterParam2.Layout.Row = 1;
+app.FilterParam2.Layout.Column = 1;
 
-% tempat grid kernel kustom dibuat/dibangun ulang
-app.KernelHost = uipanel(g, 'Title', 'Kernel kustom', 'BorderType', 'line', ...
+% normalisasi dilakukan di backend (applyEnhancement), grid hanya menampilkan nilai mentah
+app.NormalizeKernel = uicheckbox(g, ...
+    'Text', 'Normalisasi kernel (bagi dengan jumlah elemen)', ...
+    'Value', true, ...
+    'Tooltip', ['Aktif: kernel dibagi jumlah elemennya sebelum dikonvolusi. ' ...
+                'Nonaktif: nilai grid dipakai apa adanya, hasil hanya di-clip ke 0-255.']);
+app.NormalizeKernel.Layout.Row = 5;
+app.NormalizeKernel.Layout.Column = [1 2];
+
+% grid kernel: uitable supaya mengetik pada sel terpilih langsung menimpa nilainya
+app.KernelHost = uipanel(g, 'Title', 'Kernel', 'BorderType', 'line', ...
     'BackgroundColor', 'w');
-app.KernelHost.Layout.Row = 4;
+app.KernelHost.Layout.Row = 6;
 app.KernelHost.Layout.Column = [1 2];
 app.KernelLayout = uigridlayout(app.KernelHost, [1 1]);
 app.KernelLayout.Padding = [2 2 2 2];
 app.KernelLayout.BackgroundColor = 'w';
+app.KernelTable = uitable(app.KernelLayout, ...
+    'Data', zeros(3), ...
+    'ColumnName', {}, 'RowName', {}, ...
+    'ColumnEditable', true, ...
+    'ColumnWidth', 'auto', ...
+    'FontSize', 12, ...
+    'RowStriping', 'off', ...
+    'CellEditCallback', @(~, evt) onKernelCellEdited(app, evt));
+addStyle(app.KernelTable, uistyle('HorizontalAlignment', 'center'));
 
-app = rebuildKernelGrid(app);
+fillKernelTable(app);
 updateFilteringFields(app);
+end
+
+% ---------------------------------------------------------------------------
+function app = buildArithmeticPanel(app)
+
+pnl = uipanel(app.ParamStack, 'Title', '', 'BorderType', 'line', ...
+    'BackgroundColor', [0.99 0.99 0.99]);
+pnl.Layout.Row = 5;
+app.Panels.arithmetic = pnl;
+
+g = uigridlayout(pnl, [5 2]);
+g.RowHeight   = {28, 28, 28, 44, '1x'};
+g.ColumnWidth = {90, '1x'};
+g.RowSpacing  = 10;
+g.ColumnSpacing = 6;
+g.Padding = [10 10 10 10];
+g.BackgroundColor = [0.99 0.99 0.99];
+
+uilabel(g, 'Text', 'Citra 1');
+app.ArithImage = uidropdown(g, ...
+    'Items', {currentResultLabel()}, ...
+    'BackgroundColor', 'w', ...
+    'Tooltip', ['Citra pertama: hasil saat ini, citra masukan asli, atau hasil yang disimpan ' ...
+                'lewat "Simpan ke Temp"']);
+app.ArithImage.ValueChangedFcn = @(~, ~) updateOperandInfo(app);
+
+uilabel(g, 'Text', 'Operasi');
+app.ArithOperation = uidropdown(g, ...
+    'Items', {'Tambah (Citra 1 + Citra 2)', 'Kurang (Citra 1 - Citra 2)'}, ...
+    'ItemsData', {'add', 'subtract'}, ...
+    'Value', 'subtract', ...
+    'BackgroundColor', 'w', ...
+    'Tooltip', 'Hasil di luar 0-255 di-clip. Untuk Citra 2 - Citra 1, tukar pilihan kedua citra.');
+
+uilabel(g, 'Text', 'Citra 2');
+app.ArithOperand = uidropdown(g, ...
+    'Items', {originalOperandLabel()}, ...
+    'BackgroundColor', 'w', ...
+    'Tooltip', 'Citra kedua: hasil saat ini, citra masukan asli, atau file di dataset/tempProcess');
+app.ArithOperand.ValueChangedFcn = @(~, ~) updateOperandInfo(app);
+
+app.ArithInfo = uilabel(g, 'Text', '', 'WordWrap', 'on', 'FontSize', 10, ...
+    'VerticalAlignment', 'top');
+app.ArithInfo.Layout.Row = 4;
+app.ArithInfo.Layout.Column = [1 2];
+
+hint = uilabel(g, 'Text', ['Kedua citra harus berukuran dan berjumlah kanal sama. ' ...
+    'Simpan hasil dengan "Simpan ke Temp" agar muncul di daftar pilihan.'], ...
+    'WordWrap', 'on', 'FontSize', 9, 'FontColor', [0.3 0.3 0.3], ...
+    'VerticalAlignment', 'top');
+hint.Layout.Row = 5;
+hint.Layout.Column = [1 2];
+
+refreshOperandList(app);
 end
 
 % ---------------------------------------------------------------------------
@@ -394,8 +573,12 @@ app.AxHistOut = makeHistogramAxes(app.HistOutPanel);
 % baris 3: histogram per kanal
 app.ChInPanel  = makeDisplayPanel(g, 'HISTOGRAM KANAL R,G,B - MASUKAN', 3, 1);
 app.ChOutPanel = makeDisplayPanel(g, 'HISTOGRAM KANAL R,G,B - HASIL',    3, 2);
-app.AxChIn  = makeChannelAxes(app.ChInPanel);
-app.AxChOut = makeChannelAxes(app.ChOutPanel);
+
+% dropdown tampilan histogram RGB di tiap panel (keduanya disinkronkan)
+[app.HistMode, chInGrid] = makeHistModeGrid(app, app.ChInPanel);
+app.AxChIn = makeChannelAxes(chInGrid);
+[app.HistModeOut, chOutGrid] = makeHistModeGrid(app, app.ChOutPanel);
+app.AxChOut = makeChannelAxes(chOutGrid);
 
 % baris 4: tabel fitur + catatan
 app.StatsPanel = makeDisplayPanel(g, 'FITUR CITRA', 4, 1);
@@ -445,9 +628,28 @@ ax.Layout.Row = 1;
 ax.Layout.Column = 1;
 end
 
+function [dd, grid] = makeHistModeGrid(app, panel)
+grid = uigridlayout(panel, [2 1]);
+grid.RowHeight = {22, '1x'};
+grid.RowSpacing = 2;
+grid.Padding = [0 0 0 0];
+grid.BackgroundColor = 'w';
+dd = uidropdown(grid, ...
+    'Items', {'R,G,B terpisah', 'R,G,B gabungan'}, ...
+    'ItemsData', {'separate', 'combined'}, ...
+    'Value', 'separate', ...
+    'BackgroundColor', 'w', ...
+    'Tooltip', 'Tampilan histogram RGB: tiga histogram terpisah atau satu histogram gabungan');
+dd.Layout.Row = 1;
+dd.ValueChangedFcn = @(src, ~) onHistModeChanged(app, src.Value);
+end
+
 function ax = makeChannelAxes(parent)
 % tiga axes kecil untuk histogram kanal R, G, B di dalam satu panel
 lay = uigridlayout(parent, [1 3]);
+if isa(parent, 'matlab.ui.container.GridLayout')
+    lay.Layout.Row = 2;
+end
 lay.ColumnWidth = {'1x', '1x', '1x'};
 lay.ColumnSpacing = 2;
 lay.Padding = [2 2 2 2];
@@ -499,6 +701,8 @@ try
     app.Original = img;
     app.Result   = [];
     app.Steps    = {};
+    resetHistory(app);
+    fillSourceRange(app);
 
     % Update info label
     app.InfoLabel.Text = sprintf('Eksternal: %s', fileName);
@@ -552,6 +756,8 @@ end
 app.Original = img;
 app.Result   = [];
 app.Steps    = {};
+resetHistory(app);
+fillSourceRange(app);
 
 % baris kanal histogram hanya relevan untuk citra berwarna
 isColor = (size(img, 3) == 3);
@@ -579,6 +785,7 @@ tech = app.TechBox.Value;
     app.Panels.equalization.Visible    = strcmp(tech, 'Histogram Equalization');
     app.Panels.specification.Visible   = strcmp(tech, 'Histogram Specification / Matching');
     app.Panels.filtering.Visible       = strcmp(tech, 'Image Filtering');
+    app.Panels.arithmetic.Visible      = strcmp(tech, 'Image Arithmetic');
 
     % uigridlayout tetap mengalokasikan tinggi untuk baris yang komponennya
     % disembunyikan, jadi baris panel non-aktif dilipat supaya panel yang aktif
@@ -588,10 +795,14 @@ tech = app.TechBox.Value;
     setPanelRowVisible(app, 'equalization',  app.Panels.equalization.Visible);
     setPanelRowVisible(app, 'specification', app.Panels.specification.Visible);
     setPanelRowVisible(app, 'filtering',     app.Panels.filtering.Visible);
+    setPanelRowVisible(app, 'arithmetic',    app.Panels.arithmetic.Visible);
 
 % tampilkan field yang relevan untuk teknik terpilih
 updateIntensityFields(app);
 updateFilteringFields(app);
+if strcmp(tech, 'Image Arithmetic')
+    refreshOperandList(app);    % daftar temp bisa berubah sejak terakhir dibuka
+end
 end
 
 function showTechniqueInfo(app)
@@ -609,6 +820,8 @@ switch tech
         title = 'Histogram Specification / Matching';
     case 'Image Filtering'
         title = 'Image Filtering';
+    case 'Image Arithmetic'
+        title = 'Image Arithmetic';
 end
 
 % Tampilkan dialog info
@@ -618,18 +831,30 @@ uiconfirm(app.Figure, info, title, ...
 end
 
 function updateIntensityFields(app)
-if ~isfield(app, 'IntensityMode') || isempty(app.IntensityMode)
+if isempty(app.IntensityMode)
     return;
 end
 mode = app.IntensityMode.Value;
-isLog    = strcmp(mode, 'log');
-isPower  = strcmp(mode, 'power');
+isLog     = strcmp(mode, 'log');
+isPower   = strcmp(mode, 'power');
 isStretch = strcmp(mode, 'stretch');
+isRGB     = strcmp(mode, 'stretchRGB');
 
 app.IntensityC.Enable        = logical(isLog || isPower);
 app.IntensityGamma.Enable    = isPower;
 app.IntensityR1.Enable       = isStretch;
 app.IntensityR2.Enable       = isStretch;
+app.IntensitySMin.Enable     = isStretch;
+app.IntensitySMax.Enable     = isStretch;
+
+% blok stretch grayscale dan stretchRGB saling menggantikan
+app.IntensityGrayHost.Visible = ~isRGB;
+app.IntensityRGBHost.Visible  = isRGB;
+if isRGB
+    app.IntensityGrid.RowHeight = {28, 28, 28, 0, 'fit'};
+else
+    app.IntensityGrid.RowHeight = {28, 28, 28, 'fit', 0};
+end
 
 if isPower && app.IntensityGamma.Value == 1.0
     % beri nilai awal yang bermakna supaya tidak identik
@@ -637,53 +862,98 @@ if isPower && app.IntensityGamma.Value == 1.0
 end
 end
 
+function updateStretchRGBAvailability(app)
+% pilihan stretchRGB hanya ada kalau citra yang dimuat berwarna (3 kanal)
+isColor = ~isempty(app.Original) && size(app.Original, 3) == 3;
+if isColor
+    app.IntensityMode.Items = {'negative', 'log', 'power', 'stretch', 'stretchRGB'};
+else
+    if strcmp(app.IntensityMode.Value, 'stretchRGB')
+        app.IntensityMode.Value = 'stretch';
+    end
+    app.IntensityMode.Items = {'negative', 'log', 'power', 'stretch'};
+end
+updateIntensityFields(app);
+end
+
 function updateFilteringFields(app)
-if ~isfield(app, 'FilterType') || isempty(app.FilterType)
+if isempty(app.FilterType)
     return;
 end
 jenis = app.FilterType.Value;
 isLinear = strcmp(jenis, 'linear');
 isMedian = strcmp(jenis, 'median');
+src = app.KernelSource.Value;
+hasParam1 = isLinear && any(strcmp(src, {'gaussian', 'sharpen'}));
 
 app.KernelSource.Visible  = isLinear;
 app.KernelSource.Enable   = isLinear;
 app.KernelSize.Visible    = isLinear;
 app.KernelSize.Enable     = isLinear;
-app.FilterParam1.Visible  = isLinear && ~strcmp(app.KernelSource.Value, 'custom');
-app.FilterParam1.Enable  = isLinear && ~strcmp(app.KernelSource.Value, 'custom');
+app.FilterParam1.Visible  = hasParam1;
+app.FilterParam1.Enable   = hasParam1;
 app.FilterParam2.Visible  = isMedian;
 app.FilterParam2.Enable   = isMedian;
-app.KernelHost.Visible    = isLinear && strcmp(app.KernelSource.Value, 'custom');
+app.FilterParamLabel.Visible = hasParam1 || isMedian;
+app.KernelHost.Visible    = isLinear;
+app.NormalizeKernel.Visible = isLinear;
 
-src = app.KernelSource.Value;
-if isLinear
-    switch src
-        case 'gaussian'
-            app.FilterParam1.Tooltip = 'Sigma distribusi Gaussian';
-        case 'sharpen'
-            app.FilterParam1.Tooltip = 'Bobot sharpen';
-        otherwise
-            app.FilterParam1.Tooltip = 'Parameter';
-    end
+if isMedian
+    app.FilterParamLabel.Text = 'Ukuran window';
+elseif strcmp(src, 'sharpen')
+    app.FilterParamLabel.Text = 'Bobot';
+    app.FilterParam1.Tooltip = 'Bobot sharpen';
+else
+    app.FilterParamLabel.Text = 'Sigma';
+    app.FilterParam1.Tooltip = 'Sigma distribusi Gaussian';
 end
 end
 
-function app = rebuildKernelGrid(app)
-% hapus isi panel lama karena uigridlayout butuh parent yang kosong
-if ~isempty(app.KernelHost.Children)
-    delete(app.KernelHost.Children);
+function onKernelSourceChanged(app)
+updateFilteringFields(app);
+fillKernelTable(app);
 end
 
+function onKernelSizeChanged(app)
 n = str2double(app.KernelSize.Value);
-if isempty(n) || mod(n, 2) == 0
-    n = 3;
+if strcmp(app.KernelSource.Value, 'custom')
+    % pertahankan isi lama di tengah, sisanya nol
+    old = app.KernelTable.Data;
+    m = min(n, size(old, 1));
+    o = (size(old, 1) - m) / 2;
+    q = (n - m) / 2;
+    new = zeros(n);
+    new(q + 1:q + m, q + 1:q + m) = old(o + 1:o + m, o + 1:o + m);
+    app.KernelTable.Data = new;
+else
+    fillKernelTable(app);
+end
 end
 
-app.KernelLayout = uigridlayout(app.KernelHost, [1 1]);
-app.KernelLayout.Padding = [2 2 2 2];
-app.KernelLayout.BackgroundColor = 'w';
+function fillKernelTable(app)
+% isi grid dengan kernel bawaan sesuai pilihan; custom tidak diubah
+src = app.KernelSource.Value;
+if strcmp(src, 'custom')
+    return;
+end
+n = str2double(app.KernelSize.Value);
+k = presetKernel(src, n, app.FilterParam1.Value);
+if isempty(k)
+    return;     % parameter belum valid (mis. sigma <= 0), biarkan grid apa adanya
+end
+app.KernelTable.Data = k;
+end
 
-app.KernelFields = buildKernelGrid(app.KernelLayout, n);
+function onKernelCellEdited(app, evt)
+% isian tidak valid dikembalikan; isian valid mengubah kernel jadi custom
+if ~isnumeric(evt.NewData) || isnan(evt.NewData)
+    app.KernelTable.Data(evt.Indices(1), evt.Indices(2)) = evt.PreviousData;
+    return;
+end
+if ~strcmp(app.KernelSource.Value, 'custom')
+    app.KernelSource.Value = 'custom';
+    updateFilteringFields(app);
+end
 end
 
 function onTakeBounds(app)
@@ -692,10 +962,28 @@ if isempty(app.Original)
         'Citra belum dimuat');
     return;
 end
-mn = double(min(app.Original(:)));
-mx = double(max(app.Original(:)));
-app.IntensityR1.Value = mn;
-app.IntensityR2.Value = mx;
+fillSourceRange(app);
+end
+
+function fillSourceRange(app)
+% isi rentang input dengan min/maks citra: grayscale (RGB -> grayscale) dan per kanal
+img = app.Original;
+if isempty(img), return; end
+
+isColor = (size(img, 3) == 3);
+gray = img;
+if isColor
+    gray = rgb2gray(img);
+    for k = 1:3
+        ch = img(:, :, k);
+        app.IntensityRGBIn(k, 1).Value = double(min(ch(:)));
+        app.IntensityRGBIn(k, 2).Value = double(max(ch(:)));
+    end
+end
+app.IntensityR1.Value = double(min(gray(:)));
+app.IntensityR2.Value = double(max(gray(:)));
+updateStretchRGBAvailability(app);
+updateOperandInfo(app);
 end
 
 function onUseReference(app)
@@ -750,6 +1038,9 @@ base = app.Result;
 if isempty(base)
     base = app.Original;
 end
+if strcmp(tech, 'arithmetic')
+    base = params.image;    % Citra 1 dipilih sendiri di panel, tidak otomatis hasil terakhir
+end
 
 try
     [result, methodName, paramText] = applyEnhancement(base, tech, params);
@@ -759,19 +1050,231 @@ catch ex
     return;
 end
 
+pushHistory(app);      % simpan keadaan sebelum langkah ini supaya bisa di-undo
 app.Result = result;
 app.Steps{end + 1} = sprintf('%s | %s', methodName, paramText);
 
-app.LogText.Value = [{'Langkah enhancement yang sudah diterapkan:'}, ...
-                     app.Steps];
+showLog(app);
 refreshAll(app);
 end
 
 function onReset(app)
+if ~isempty(app.Result)
+    pushHistory(app);
+end
 app.Result = [];
 app.Steps  = {};
-app.LogText.Value = {'Belum ada langkah enhancement. Citra dikembalikan ke masukan.'};
+showLog(app);
 refreshAll(app);
+end
+
+% ---------------------------------------------------------------------------
+% Undo dan hasil antara (tempProcess)
+% ---------------------------------------------------------------------------
+
+function n = maxHistory()
+n = 20;
+end
+
+function pushHistory(app)
+st.Result = app.Result;
+st.Steps  = app.Steps;
+app.History{end + 1} = st;
+if numel(app.History) > maxHistory()
+    app.History(1) = [];        % buang history terlama
+end
+updateUndoButton(app);
+end
+
+function resetHistory(app)
+app.History = {};
+updateUndoButton(app);
+end
+
+function updateUndoButton(app)
+if isempty(app.UndoButton) || ~isvalid(app.UndoButton)
+    return;
+end
+if isempty(app.History)
+    app.UndoButton.Enable = 'off';
+else
+    app.UndoButton.Enable = 'on';
+end
+end
+
+function onUndo(app)
+if isempty(app.History)
+    return;
+end
+st = app.History{end};
+app.History(end) = [];
+app.Result = st.Result;
+app.Steps  = st.Steps;      %steps juga diundo
+showLog(app);
+refreshAll(app);
+updateUndoButton(app);
+end
+
+function showLog(app)
+if isempty(app.Steps)
+    app.LogText.Value = {'Belum ada langkah enhancement. Citra dikembalikan ke masukan.'};
+else
+    app.LogText.Value = [{'Langkah enhancement yang sudah diterapkan:'}, app.Steps];
+end
+end
+
+function onSaveTemp(app)
+if isempty(app.Original)
+    uialert(app.Figure, 'Muat citra dulu sebelum menyimpan hasil.', 'Citra belum dimuat');
+    return;
+end
+
+img = app.Result;
+sumber = 'hasil saat ini';
+if isempty(img)
+    img = app.Original;
+    sumber = 'citra masukan (belum ada hasil)';
+end
+
+try
+    name = tempProcess('save', img);
+catch ex
+    uialert(app.Figure, sprintf('%s\n\n%s', ex.message, ...
+        'Periksa folder dataset dan hak tulis.'), 'Gagal menyimpan ke temp');
+    return;
+end
+
+refreshOperandList(app);
+app.LogText.Value = [app.LogText.Value(:); {sprintf('Disimpan ke temp: %s (%s)', name, sumber)}];
+end
+
+function onClearTemp(app)
+names = tempProcess('list');
+if isempty(names)
+    uialert(app.Figure, 'Folder temp sudah kosong.', 'Kosongkan Temp', 'Icon', 'info');
+    return;
+end
+
+pilihan = uiconfirm(app.Figure, ...
+    sprintf('Hapus %d citra di %s?', numel(names), tempProcess('folder')), ...
+    'Kosongkan Temp', 'Options', {'Hapus', 'Batal'}, ...
+    'DefaultOption', 'Batal', 'CancelOption', 'Batal', 'Icon', 'warning');
+if ~strcmp(pilihan, 'Hapus')
+    return;
+end
+
+tempProcess('clear');
+refreshOperandList(app);
+end
+
+function label = originalOperandLabel()
+label = '[Citra masukan asli]';
+end
+
+function label = currentResultLabel()
+label = '[Hasil saat ini]';
+end
+
+function refreshOperandList(app)
+% samakan daftar pilihan kedua citra dengan isi folder temp; pilihan lama dipertahankan kalau masih ada
+temp = tempProcess('list');
+itemsImg = [{currentResultLabel(), originalOperandLabel()}, temp];
+itemsOp  = [{originalOperandLabel(), currentResultLabel()}, temp];
+
+curImg = app.ArithImage.Value;
+curOp  = app.ArithOperand.Value;
+app.ArithImage.Items   = itemsImg;
+app.ArithOperand.Items = itemsOp;
+if any(strcmp(curImg, itemsImg)), app.ArithImage.Value = curImg; else, app.ArithImage.Value = itemsImg{1}; end
+if any(strcmp(curOp, itemsOp)),   app.ArithOperand.Value = curOp; else, app.ArithOperand.Value = itemsOp{1}; end
+updateOperandInfo(app);
+end
+
+function updateOperandInfo(app)
+% tampilkan ukuran kedua citra dan tandai kalau tidak cocok satu sama lain
+[ok1, sz1, ch1] = sourceInfo(app, app.ArithImage.Value);
+[ok2, sz2, ch2] = sourceInfo(app, app.ArithOperand.Value);
+
+if ~ok1 || ~ok2
+    if isempty(app.Original)
+        app.ArithInfo.Text = 'Muat citra dulu.';
+        app.ArithInfo.FontColor = [0.3 0.3 0.3];
+    else
+        app.ArithInfo.Text = 'Berkas tidak terbaca. Kosongkan temp atau simpan ulang.';
+        app.ArithInfo.FontColor = [0.7 0.1 0.1];
+    end
+    return;
+end
+
+msg = sprintf('Citra 1: %dx%d, %s | Citra 2: %dx%d, %s', ...
+    sz1(1), sz1(2), channelName(ch1), sz2(1), sz2(2), channelName(ch2));
+if any(sz1 ~= sz2) || ch1 ~= ch2
+    msg = [msg '. TIDAK COCOK, operasi akan ditolak.'];
+    app.ArithInfo.FontColor = [0.7 0.1 0.1];
+else
+    app.ArithInfo.FontColor = [0.2 0.2 0.2];
+end
+app.ArithInfo.Text = msg;
+end
+
+function [ok, sz, nCh] = sourceInfo(app, sel)
+% ukuran dan jumlah kanal sumber tanpa membaca seluruh piksel (file temp lewat imfinfo)
+ok = false; sz = [0 0]; nCh = 0;
+try
+    if any(strcmp(sel, {originalOperandLabel(), currentResultLabel()}))
+        % hasil selalu berukuran sama dengan citra masukan
+        if isempty(app.Original), return; end
+        sz = [size(app.Original, 1), size(app.Original, 2)];
+        nCh = size(app.Original, 3);
+    else
+        info = imfinfo(fullfile(tempProcess('folder'), sel));
+        sz = [info.Height, info.Width];
+        nCh = 1 + 2 * strcmpi(info.ColorType, 'truecolor');
+    end
+    ok = true;
+catch
+    ok = false;
+end
+end
+
+function t = channelName(nCh)
+if nCh == 3
+    t = 'RGB';
+else
+    t = 'abu-abu';
+end
+end
+
+function [img, name] = readSource(app, sel)
+% baca citra untuk dropdown Citra 1 / Citra 2
+if strcmp(sel, originalOperandLabel())
+    img = app.Original;
+    name = 'citra masukan asli';
+    return;
+end
+
+if strcmp(sel, currentResultLabel())
+    if isempty(app.Result)
+        img = app.Original;
+        name = 'citra masukan asli (belum ada hasil)';
+    else
+        img = app.Result;
+        name = 'hasil saat ini';
+    end
+    return;
+end
+
+filePath = fullfile(tempProcess('folder'), sel);
+if ~isfile(filePath)
+    refreshOperandList(app);
+    error('Berkas "%s" sudah tidak ada. Daftar pilihan sudah disegarkan, pilih lagi.', sel);
+end
+try
+    img = imread(filePath);
+catch ex
+    error('Berkas "%s" tidak bisa dibaca: %s', sel, ex.message);
+end
+name = sel;
 end
 
 function onSaveRecord(app)
@@ -814,7 +1317,13 @@ switch app.TechBox.Value
             'c',     app.IntensityC.Value, ...
             'gamma', app.IntensityGamma.Value, ...
             'r1',    app.IntensityR1.Value, ...
-            'r2',    app.IntensityR2.Value);
+            'r2',    app.IntensityR2.Value, ...
+            's1',    app.IntensitySMin.Value, ...
+            's2',    app.IntensitySMax.Value, ...
+            'r1rgb', arrayfun(@(f) f.Value, app.IntensityRGBIn(:, 1))', ...
+            'r2rgb', arrayfun(@(f) f.Value, app.IntensityRGBIn(:, 2))', ...
+            's1rgb', arrayfun(@(f) f.Value, app.IntensityRGBOut(:, 1))', ...
+            's2rgb', arrayfun(@(f) f.Value, app.IntensityRGBOut(:, 2))');
 
     case 'Histogram Equalization'
         tech = 'equalization';
@@ -836,16 +1345,28 @@ switch app.TechBox.Value
             params.kernelSource = app.KernelSource.Value;
             params.kernelSize   = str2double(app.KernelSize.Value);
 
-            switch app.KernelSource.Value
-                case 'gaussian'
-                    params.sigma = app.FilterParam1.Value;
-                case 'sharpen'
-                    params.sharpWeight = app.FilterParam1.Value;
-                case 'custom'
-                    params.kernel          = readKernelGrid(app.KernelFields);
-                    params.normalizeKernel = true;
+            normalize = app.NormalizeKernel.Value;
+            if strcmp(app.KernelSource.Value, 'custom') || ~normalize
+                params.kernelSource    = 'custom';
+                params.kernel          = app.KernelTable.Data;
+                params.normalizeKernel = normalize;
+            elseif strcmp(app.KernelSource.Value, 'gaussian')
+                params.sigma = app.FilterParam1.Value;
+            elseif strcmp(app.KernelSource.Value, 'sharpen')
+                params.sharpWeight = app.FilterParam1.Value;
             end
         end
+
+    case 'Image Arithmetic'
+        tech = 'arithmetic';
+        [img1, name1] = readSource(app, app.ArithImage.Value);
+        [img2, name2] = readSource(app, app.ArithOperand.Value);
+        params = struct( ...
+            'operation',   app.ArithOperation.Value, ...
+            'image',       img1, ...
+            'imageName',   name1, ...
+            'operand',     img2, ...
+            'operandName', name2);
 
     otherwise
         error('applyEnhancement:teknikTidakDikenal', ...
@@ -873,6 +1394,7 @@ drawImageAndHistograms( ...
 
 % judul grayscale di kolom masukan haris sama dengan kolom hasil
 title(app.AxHistIn, 'Histogram Abu-abu - Masukan');
+applyHistMode(app.AxChIn, app.Original, app.HistMode.Value);
 end
 
 function drawOutputColumn(app)
@@ -887,6 +1409,73 @@ drawImageAndHistograms( ...
     app.AxImageOut, app.AxHistOut, pickChannels(app.AxChOut, isColor), ...
     app.Result, 'hasil', [0.25 0.25 0.25]);
 title(app.AxHistOut, 'Histogram Abu-abu - Hasil');
+applyHistMode(app.AxChOut, app.Result, app.HistModeOut.Value);
+end
+
+function onHistModeChanged(app, mode)
+app.HistMode.Value    = mode;
+app.HistModeOut.Value = mode;
+applyHistMode(app.AxChIn,  app.Original, mode);
+applyHistMode(app.AxChOut, app.Result,   mode);
+end
+
+function applyHistMode(axCh, img, mode)
+% gambar ulang histogram RGB sesuai pilihan dropdown (terpisah / gabungan)
+if isempty(img) || size(img, 3) ~= 3
+    return;
+end
+
+combined = strcmp(mode, 'combined');
+warna = {'r', 'g', 'b'};
+nama  = {'R', 'G', 'B'};
+
+for k = 1:3
+    resetAxes(axCh(k));
+end
+
+if combined
+    axCh(1).Layout.Column = [1 3];
+    showAxes(axCh(1));
+    hold(axCh(1), 'on');
+    for k = 1:3
+        h = computeHistogram(img(:, :, k));
+        plot(axCh(1), 0:255, h, 'Color', warna{k}, 'LineWidth', 1.2, ...
+            'DisplayName', nama{k});
+    end
+    hold(axCh(1), 'off');
+    title(axCh(1), 'Histogram RGB Gabungan');
+    xlabel(axCh(1), 'Intensitas'); ylabel(axCh(1), 'Jumlah Piksel');
+    xlim(axCh(1), [0 255]);
+    legend(axCh(1), 'show');
+    hideAxes(axCh(2));
+    hideAxes(axCh(3));
+else
+    axCh(1).Layout.Column = 1;
+    for k = 1:3
+        h = computeHistogram(img(:, :, k));
+        showAxes(axCh(k));
+        bar(axCh(k), 0:255, h, warna{k});
+        title(axCh(k), ['Kanal ' nama{k}]);
+        xlabel(axCh(k), 'Intensitas'); ylabel(axCh(k), 'Jumlah Piksel');
+    end
+end
+end
+
+function resetAxes(ax)
+legend(ax, 'off');
+cla(ax);
+title(ax, ''); xlabel(ax, ''); ylabel(ax, '');
+end
+
+function showAxes(ax)
+ax.Visible = 'on';
+ax.Toolbar.Visible = 'on';
+end
+
+function hideAxes(ax)
+% Visible off saja menyisakan toolbar (menu 3 titik), jadi toolbar ikut dimatikan
+ax.Visible = 'off';
+ax.Toolbar.Visible = 'off';
 end
 
 function ax = pickChannels(allAxes, isColor)
@@ -904,61 +1493,43 @@ if isempty(app.Original)
     return;
 end
 
-statsBefore = imageStatistics(app.Original);
+sb = imageStatistics(app.Original);
+colMasukan = statsColumn(sb, sb.isColor);
 
 if isempty(app.Result)
-    colHasil = repmat({'-'}, 6, 1);
+    colHasil = repmat({'-'}, 7, 1);
 else
-    statsAfter   = imageStatistics(app.Result);
-    entropyAfter = statsAfter.entropy;
-
-    if statsBefore.isColor
-        colHasil = { ...
-            num2str(statsAfter.grayscale.min), ...
-            num2str(statsAfter.grayscale.max), ...
-            sprintf('%.2f', statsAfter.grayscale.mean), ...
-            sprintf('%.2f', statsAfter.grayscale.std), ...
-            sprintf('%.4f', entropyAfter), ...
-            sprintf('%d,%d,%d', statsAfter.channels(1).min, ...
-                    statsAfter.channels(2).min, statsAfter.channels(3).min)};
-    else
-        colHasil = { ...
-            num2str(statsAfter.grayscale.min), ...
-            num2str(statsAfter.grayscale.max), ...
-            sprintf('%.2f', statsAfter.grayscale.mean), ...
-            sprintf('%.2f', statsAfter.grayscale.std), ...
-            sprintf('%.4f', entropyAfter), ...
-            '-'};
-    end
-end
-
-sb = statsBefore;
-colMasukan = { ...
-    num2str(sb.grayscale.min), ...
-    num2str(sb.grayscale.max), ...
-    sprintf('%.2f', sb.grayscale.mean), ...
-    sprintf('%.2f', sb.grayscale.std), ...
-    sprintf('%.4f', sb.entropy)};
-
-if sb.isColor
-    colMasukan{end + 1} = sprintf('%d,%d,%d', ...
-        sb.channels(1).min, sb.channels(2).min, sb.channels(3).min);
-else
-    colMasukan{end + 1} = '-';
-    if numel(colHasil) == 6, colHasil{end} = '-'; else, colHasil{6} = '-'; end
+    colHasil = statsColumn(imageStatistics(app.Result), sb.isColor);
 end
 
 names = {'Min intensitas', 'Maks intensitas', 'Rerata', ...
-         'Simpangan baku', 'Entropi (bit)', 'Min per kanal R,G,B'};
+         'Simpangan baku', 'Entropi (bit)', ...
+         'Min per kanal R,G,B', 'Maks per kanal R,G,B'};
 
 app.StatsTable.ColumnName = {'Fitur', 'Masukan', 'Hasil'};
 app.StatsTable.Data = [names(:), colMasukan(:), colHasil(:)];
+end
+
+function col = statsColumn(s, showChannels)
+% satu kolom tabel fitur; baris kanal diisi '-' kalau citra abu-abu
+col = { ...
+    num2str(s.grayscale.min), ...
+    num2str(s.grayscale.max), ...
+    sprintf('%.2f', s.grayscale.mean), ...
+    sprintf('%.2f', s.grayscale.std), ...
+    sprintf('%.4f', s.entropy), ...
+    '-', '-'};
+if showChannels && s.isColor
+    col{6} = sprintf('%d,%d,%d', s.channels(1).min, s.channels(2).min, s.channels(3).min);
+    col{7} = sprintf('%d,%d,%d', s.channels(1).max, s.channels(2).max, s.channels(3).max);
+end
 end
 
 function setEmptyState(app)
 app.Original = [];
 app.Result   = [];
 app.Steps    = {};
+resetHistory(app);
 
 if isfield(app, 'LogText') && ~isempty(app.LogText)
     app.LogText.Value = {'Muat citra dulu, lalu pilih teknik enhancement.'};
@@ -1100,6 +1671,8 @@ switch tech
         tip = 'Menyesuaikan histogram citra dengan citra referensi.';
     case 'Image Filtering'
         tip = 'Filter linear (konvolusi) atau non-linear (median).';
+    case 'Image Arithmetic'
+        tip = 'Tambah/kurang dua citra berukuran sama, masing-masing dipilih dari hasil saat ini, citra asli, atau hasil yang disimpan ke temp.';
     otherwise
         tip = '';
 end

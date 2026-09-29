@@ -2,7 +2,7 @@ function [result, methodName, paramText] = applyEnhancement(img, technique, para
 % applyEnhancement - titik masuk tunggal semua teknik enhancement
 %
 % img       : citra grayscale (2D) atau RGB (3D), uint8
-% technique : 'intensity' | 'equalization' | 'specification' | 'filtering'
+% technique : 'intensity' | 'equalization' | 'specification' | 'filtering' | 'arithmetic'
 % params    : struct field sesuai teknik (lihat daftar di bawah)
 %
 % result     : citra hasil enhancement (uint8, dimensi sama dengan img)
@@ -10,17 +10,25 @@ function [result, methodName, paramText] = applyEnhancement(img, technique, para
 % paramText  : string parameter efektif yang dipakai (untuk laporan)
 %
 % Daftar field params per technique:
-%   intensity     .mode .c .gamma .r1 .r2
+%   intensity     .mode .c .gamma .r1 .r2 .s1 .s2
 %                 mode 'negative'  : tidak butuh param
 %                 mode 'log'       : .c (opsional, otomatis kalau kosong)
 %                 mode 'power'     : .c dan .gamma
-%                 mode 'stretch'   : .r1 dan .r2
+%                 mode 'stretch'   : .r1 dan .r2 (rentang input), .s1 dan .s2
+%                                    (rentang target, default 0 dan 255)
+%                 mode 'stretchRGB': .r1rgb .r2rgb (input) dan .s1rgb .s2rgb
+%                                    (target, default 0 dan 255), masing-masing
+%                                    vektor 1x3 untuk kanal R,G,B; hanya citra RGB
 %   equalization  .variant                % 'grayscale' | 'rgb' | 'lightness'
 %   specification .reference              % citra array atau path file
 %   filtering     .jenis .kernelSource .kernelSize .sigma .sharpWeight
 %                 .kernel .normalizeKernel .windowSize
 %                 jenis 'linear'  : .kernelSource + param kernel terkait
 %                 jenis 'median'  : .windowSize
+%   arithmetic    .operation .operand .operandName .imageName
+%                 operation 'add' (img + operand) | 'subtract' (img - operand)
+%                           | 'reverse' (operand - img)
+%                 operand   : citra uint8 dengan ukuran dan jumlah kanal sama dengan img
 
 if nargin < 2 || isempty(technique)
     error('applyEnhancement:teknikKosong', 'Teknik enhancement belum dipilih.');
@@ -42,6 +50,9 @@ switch lower(technique)
 
     case 'filtering'
         [result, methodName, paramText] = applyFiltering(img, params);
+
+    case 'arithmetic'
+        [result, methodName, paramText] = applyArithmetic(img, params);
 
     otherwise
         error('applyEnhancement:teknikTidakDikenal', 'Teknik enhancement tidak dikenal: %s', technique);
@@ -101,23 +112,109 @@ switch mode
     case 'stretch'
         r1 = getScalar(params, 'r1', []);
         r2 = getScalar(params, 'r2', []);
+        s1 = getScalar(params, 's1', 0);      % default target 0..255
+        s2 = getScalar(params, 's2', 255);
         if isempty(r1) || isempty(r2)
             error('applyEnhancement:paramKurang', 'Mode stretch butuh parameter .r1 dan .r2. Tekan "Ambil min/maks citra" untuk mengisinya.');
         end
         checkRangeScalar(r1, 'r1');
         checkRangeScalar(r2, 'r2');
+        checkRangeScalar(s1, 's1');
+        checkRangeScalar(s2, 's2');
         if r1 >= r2
             error('applyEnhancement:rentangTidakValid', ...
                 ['Batas rentang contrast stretching tidak valid: r1 (%g) harus lebih kecil ' ...
                  'dari r2 (%g). Ambil min/maks citra dulu supaya r1 < r2.'], r1, r2);
         end
-        result = intensityTransform(img, 'stretch', [r1 r2]);
+        if s1 >= s2
+            error('applyEnhancement:rentangTargetTidakValid', ...
+                'Rentang target tidak valid: s1 (%g) harus lebih kecil dari s2 (%g).', s1, s2);
+        end
+        result = intensityTransform(img, 'stretch', [r1 r2 s1 s2]);
         methodName = 'Intensity Transformation - contrast stretching';
-        paramText  = sprintf('r1 = %g, r2 = %g', r1, r2);
+        paramText  = sprintf('input [%g, %g] -> target [%g, %g]', r1, r2, s1, s2);
+
+    case 'stretchrgb'
+        if size(img, 3) ~= 3
+            error('applyEnhancement:butuhRGB', 'Mode stretchRGB hanya untuk citra berwarna (RGB).');
+        end
+        r1 = getChannelVector(params, 'r1rgb', []);
+        r2 = getChannelVector(params, 'r2rgb', []);
+        s1 = getChannelVector(params, 's1rgb', [0 0 0]);
+        s2 = getChannelVector(params, 's2rgb', [255 255 255]);
+        if isempty(r1) || isempty(r2)
+            error('applyEnhancement:paramKurang', 'Mode stretchRGB butuh parameter .r1rgb dan .r2rgb (masing-masing 3 nilai R,G,B).');
+        end
+        nama = 'RGB';
+        for k = 1:3
+            checkRangeScalar(r1(k), ['r1rgb ' nama(k)]);
+            checkRangeScalar(r2(k), ['r2rgb ' nama(k)]);
+            checkRangeScalar(s1(k), ['s1rgb ' nama(k)]);
+            checkRangeScalar(s2(k), ['s2rgb ' nama(k)]);
+            if r1(k) >= r2(k)
+                error('applyEnhancement:rentangTidakValid', ...
+                    'Rentang input kanal %s tidak valid: min (%g) harus lebih kecil dari maks (%g).', ...
+                    nama(k), r1(k), r2(k));
+            end
+            if s1(k) >= s2(k)
+                error('applyEnhancement:rentangTargetTidakValid', ...
+                    'Rentang target kanal %s tidak valid: min (%g) harus lebih kecil dari maks (%g).', ...
+                    nama(k), s1(k), s2(k));
+            end
+        end
+        result = intensityTransform(img, 'stretchRGB', [r1; r2; s1; s2]);
+        methodName = 'Intensity Transformation - contrast stretching per kanal (RGB)';
+        paramText  = sprintf('R [%g,%g]->[%g,%g]; G [%g,%g]->[%g,%g]; B [%g,%g]->[%g,%g]', ...
+            r1(1), r2(1), s1(1), s2(1), r1(2), r2(2), s1(2), s2(2), r1(3), r2(3), s1(3), s2(3));
 
     otherwise
-        error('applyEnhancement:modeTidakDikenal', 'Mode intensity tidak dikenal: %s. Pilih negative, log, power, atau stretch.', mode);
+        error('applyEnhancement:modeTidakDikenal', 'Mode intensity tidak dikenal: %s. Pilih negative, log, power, stretch, atau stretchRGB.', mode);
 end
+end
+
+% ---------------------------------------------------------------------------
+function [result, methodName, paramText] = applyArithmetic(img, params)
+
+operation = lower(getText(params, 'operation', 'subtract'));
+operand   = getValue(params, 'operand', []);
+name      = getText(params, 'operandName', 'operan');
+nameImg   = getText(params, 'imageName', 'citra');   % nama citra pertama (img)
+
+if isempty(operand)
+    error('applyEnhancement:operanKosong', ...
+        'Citra kedua belum dipilih. Simpan hasil ke temp dulu, atau pilih citra masukan asli.');
+end
+validateattributes(operand, {'uint8'}, {'nonempty'}, 'applyEnhancement:arithmetic', 'operand');
+
+% cek size
+if size(img, 3) ~= size(operand, 3)
+    error('applyEnhancement:kanalBeda', ...
+        ['Jumlah kanal berbeda: "%s" %d kanal, "%s" %d kanal. ' ...
+         'Kedua citra harus sama-sama berwarna atau sama-sama abu-abu.'], ...
+        nameImg, size(img, 3), name, size(operand, 3));
+end
+if size(img, 1) ~= size(operand, 1) || size(img, 2) ~= size(operand, 2)
+    error('applyEnhancement:ukuranBeda', ...
+        'Ukuran citra berbeda: "%s" %dx%d, "%s" %dx%d. Operasi hanya untuk ukuran yang sama.', ...
+        nameImg, size(img, 1), size(img, 2), name, size(operand, 1), size(operand, 2));
+end
+
+switch operation
+    case 'add'
+        methodName = 'Image Arithmetic - penjumlahan';
+        paramText  = sprintf('%s + %s', nameImg, name);
+    case 'subtract'
+        methodName = 'Image Arithmetic - pengurangan';
+        paramText  = sprintf('%s - %s', nameImg, name);
+    case 'reverse'
+        methodName = 'Image Arithmetic - pengurangan terbalik';
+        paramText  = sprintf('%s - %s', name, nameImg);
+    otherwise
+        error('applyEnhancement:operasiTidakDikenal', ...
+            'Operasi tidak dikenal: %s. Pilih add, subtract, atau reverse.', operation);
+end
+
+result = imageArithmetic(img, operand, operation);
 end
 
 % ---------------------------------------------------------------------------
@@ -339,6 +436,17 @@ if ~isfield(s, name) || isempty(s.(name))
 end
 v = s.(name);
 validateattributes(v, {'numeric'}, {'finite', 'scalar'}, 'applyEnhancement', name);
+end
+
+function v = getChannelVector(s, name, default)
+% vektor baris 1x3 (nilai kanal R,G,B)
+if ~isfield(s, name) || isempty(s.(name))
+    v = default;
+    return;
+end
+v = s.(name);
+validateattributes(v, {'numeric'}, {'finite', 'numel', 3}, 'applyEnhancement', name);
+v = double(v(:)');
 end
 
 function v = getText(s, name, default)

@@ -5,7 +5,7 @@ minVal = min(imgGray1(:));
 maxVal = max(imgGray1(:));
 fprintf('Min = %d, Max = %d\n', minVal, maxVal);
 
-img1Enh = intensityTransform(img1, 'stretch', [84 140]);
+img1Enh = intensityTransform(img1, 'stretch', [84 140 0 255]);
 img1EnhHisteq = equalizeRGB(img1);
 plotHistogram(img1, 'image_01');
 plotHistogram(img1Enh, 'image_01 enhanced');

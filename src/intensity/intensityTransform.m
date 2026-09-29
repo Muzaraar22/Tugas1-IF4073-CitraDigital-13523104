@@ -24,11 +24,28 @@ switch lower(mode)
         result = c * (img / 255).^gamma * 255;
 
     case 'stretch'
-        %contrast stretching linear: param = [r1, r2]
-        %memetakan rentang [r1, r2] jadi [0, 255].
-        r1 = param(1);
-        r2 = param(2);
-        result = (img - r1) / (r2 - r1) * 255;
+        %contrast stretching linear: param = [rMin, rMax, sMin, sMax]
+        %memetakan rentang input [rMin, rMax] jadi rentang target [sMin, sMax].
+        rMin = param(1);
+        rMax = param(2);
+        sMin = param(3);
+        sMax = param(4);
+        result = (img - rMin) / (rMax - rMin) * (sMax - sMin) + sMin;
+
+    case 'stretchrgb'
+        %contrast stretching per kanal: param = 4x3, kolom = kanal R,G,B,
+        %baris = [rMin; rMax; sMin; sMax]
+        if size(img, 3) ~= 3
+            error('intensityTransform:butuhRGB', 'stretchRGB hanya untuk citra RGB.');
+        end
+        result = zeros(size(img));
+        for k = 1:3
+            rMin = param(1, k);
+            rMax = param(2, k);
+            sMin = param(3, k);
+            sMax = param(4, k);
+            result(:, :, k) = (img(:, :, k) - rMin) / (rMax - rMin) * (sMax - sMin) + sMin;
+        end
 
     otherwise
         error('P ga ada dipilihan: %s', mode);

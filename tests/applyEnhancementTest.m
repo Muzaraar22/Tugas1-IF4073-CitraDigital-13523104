@@ -174,6 +174,83 @@ classdef applyEnhancementTest < matlab.unittest.TestCase
                 struct('mode', 'stretch', 'r1', 200, 'r2', 100)), 'applyEnhancement:rentangTidakValid');
         end
 
+        function arithmeticSubtractMatchesManual(testCase)
+            operand = uint8(testCase.Rgb / 2);
+            [out, ~, txt] = applyEnhancement(testCase.Rgb, 'arithmetic', ...
+                struct('operation', 'subtract', 'operand', operand, 'operandName', 'proc_001.png'));
+            testCase.verifyEqual(out, testCase.Rgb - operand);
+            testCase.verifyTrue(contains(txt, 'proc_001.png'));
+        end
+
+        function arithmeticParamTextNamesBothImages(testCase)
+            [~, ~, txt] = applyEnhancement(testCase.Rgb, 'arithmetic', ...
+                struct('operation', 'subtract', 'operand', testCase.Rgb, ...
+                       'operandName', 'proc_002.png', 'imageName', 'proc_001.png'));
+            testCase.verifyEqual(txt, 'proc_001.png - proc_002.png');
+        end
+
+        function arithmeticSizeMismatchNamesBothImages(testCase)
+            small = testCase.Rgb(1:10, 1:10, :);
+            try
+                applyEnhancement(testCase.Rgb, 'arithmetic', struct('operation', 'add', ...
+                    'operand', small, 'operandName', 'kecil.png', 'imageName', 'besar.png'));
+                testCase.verifyFail('seharusnya melempar error ukuranBeda');
+            catch ex
+                testCase.verifyEqual(ex.identifier, 'applyEnhancement:ukuranBeda');
+                testCase.verifySubstring(ex.message, 'kecil.png');
+                testCase.verifySubstring(ex.message, 'besar.png');
+            end
+        end
+
+        function arithmeticReverseIsOperandMinusImage(testCase)
+            operand = testCase.Rgb;
+            img = uint8(testCase.Rgb / 2);
+            out = applyEnhancement(img, 'arithmetic', ...
+                struct('operation', 'reverse', 'operand', operand));
+            testCase.verifyEqual(out, operand - img);
+        end
+
+        function arithmeticMissingOperandThrows(testCase)
+            testCase.verifyError(@() applyEnhancement(testCase.Rgb, 'arithmetic', ...
+                struct('operation', 'add')), 'applyEnhancement:operanKosong');
+        end
+
+        function arithmeticSizeMismatchThrows(testCase)
+            small = testCase.Rgb(1:10, 1:10, :);
+            testCase.verifyError(@() applyEnhancement(testCase.Rgb, 'arithmetic', ...
+                struct('operation', 'add', 'operand', small)), 'applyEnhancement:ukuranBeda');
+        end
+
+        function arithmeticChannelMismatchThrows(testCase)
+            gray = testCase.Rgb(:, :, 1);
+            testCase.verifyError(@() applyEnhancement(testCase.Rgb, 'arithmetic', ...
+                struct('operation', 'add', 'operand', gray)), 'applyEnhancement:kanalBeda');
+        end
+
+        function arithmeticUnknownOperationThrows(testCase)
+            testCase.verifyError(@() applyEnhancement(testCase.Rgb, 'arithmetic', ...
+                struct('operation', 'kali', 'operand', testCase.Rgb)), 'applyEnhancement:operasiTidakDikenal');
+        end
+
+        function stretchRgbKeepsRgbUint8(testCase)
+            out = applyEnhancement(testCase.Rgb, 'intensity', struct('mode', 'stretchRGB', ...
+                'r1rgb', [10 20 30], 'r2rgb', [200 210 220]));
+            testCase.verifyClass(out, 'uint8');
+            testCase.verifySize(out, size(testCase.Rgb));
+        end
+
+        function stretchRgbOnGrayThrows(testCase)
+            testCase.verifyError(@() applyEnhancement(testCase.Gray, 'intensity', ...
+                struct('mode', 'stretchRGB', 'r1rgb', [0 0 0], 'r2rgb', [255 255 255])), ...
+                'applyEnhancement:butuhRGB');
+        end
+
+        function stretchRgbBadChannelRangeThrows(testCase)
+            testCase.verifyError(@() applyEnhancement(testCase.Rgb, 'intensity', ...
+                struct('mode', 'stretchRGB', 'r1rgb', [0 50 0], 'r2rgb', [255 50 255])), ...
+                'applyEnhancement:rentangTidakValid');
+        end
+
         function stretchMissingBoundsThrows(testCase)
             testCase.verifyError(@() applyEnhancement(testCase.Rgb, 'intensity', ...
                 struct('mode', 'stretch')), 'applyEnhancement:paramKurang');

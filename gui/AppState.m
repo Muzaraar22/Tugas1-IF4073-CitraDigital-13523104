@@ -7,6 +7,7 @@ classdef AppState < handle
         Result     = [];    % citra hasil chaining ([] = belum ada)
         Reference  = [];    % citra referensi untuk specification
         Steps      = {};    % riwayat langkah: cell array of string
+        History    = {};    % tumpukan undo: cell of struct (.Result, .Steps)
         DatasetIdx = [];    % struktur dataset dari datasetIndex()
         OutFolder  = 'out'; % tujuan rekapan CSV dan figure batch
 
@@ -31,6 +32,15 @@ classdef AppState < handle
         % panel intensity
         IntensityMode   = []; IntensityC   = [];
         IntensityGamma  = []; IntensityR1  = []; IntensityR2 = [];
+        IntensitySMin = []; IntensitySMax = [];
+        IntensityGrid = []; IntensityGrayHost = []; IntensityRGBHost = [];
+        IntensityRGBIn = []; IntensityRGBOut = [];
+
+        % panel image arithmetic
+        ArithImage = []; ArithOperation = []; ArithOperand = []; ArithInfo = [];
+
+        % tombol aksi
+        UndoButton = [];
 
         % panel equalization
         EqualVariant = [];
@@ -40,8 +50,8 @@ classdef AppState < handle
 
         % panel filtering
         FilterType  = []; KernelSource = []; KernelSize = [];
-        FilterParam1 = []; FilterParam2 = [];
-        KernelHost  = []; KernelLayout = []; KernelFields = [];
+        FilterParam1 = []; FilterParam2 = []; FilterParamLabel = []; NormalizeKernel = [];
+        KernelHost  = []; KernelLayout = []; KernelTable = [];
 
         % panel tampilan kanan
         ImageInPanel  = []; ImageOutPanel  = [];
@@ -49,7 +59,7 @@ classdef AppState < handle
         HistInPanel   = []; HistOutPanel   = [];
         AxHistIn      = []; AxHistOut      = [];
         ChInPanel     = []; ChOutPanel     = [];
-        AxChIn        = []; AxChOut        = []
+        AxChIn        = []; AxChOut        = []; HistMode = []; HistModeOut = []
         StatsPanel    = []; StatsTable     = []
         LogPanel      = []; LogText        = []; NoteText = []
     end
