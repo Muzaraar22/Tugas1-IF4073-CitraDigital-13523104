@@ -385,10 +385,10 @@ pnl = uipanel(app.ParamStack, 'Title', '', 'BorderType', 'line', ...
 pnl.Layout.Row = 4;
 app.Panels.filtering = pnl;
 
-g = uigridlayout(pnl, [4 2]);
-g.RowHeight   = {22, 22, 22, '1x'};
+g = uigridlayout(pnl, [5 2]);
+g.RowHeight   = {22, 22, 22, 22, '1x'};
 g.ColumnWidth = {90, '1x'};
-g.RowSpacing  = 3;
+g.RowSpacing  = 6;
 g.ColumnSpacing = 4;
 g.Padding = [6 6 6 6];
 g.BackgroundColor = [0.99 0.99 0.99];
@@ -403,35 +403,50 @@ uilabel(g, 'Text', 'Kernel');
 app.KernelSource = uidropdown(g, ...
     'Items', {'gaussian', 'mean', 'sharpen', 'custom'}, ...
     'Value', 'gaussian', ...
-    'BackgroundColor', 'w');
-app.KernelSource.ValueChangedFcn = @(~, ~) updateFilteringFields(app);
+    'BackgroundColor', 'w', ...
+    'Tooltip', 'Memilih kernel bawaan mengisi grid di bawah. Mengubah isi grid otomatis menjadi custom.');
+app.KernelSource.ValueChangedFcn = @(~, ~) onKernelSourceChanged(app);
 
 uilabel(g, 'Text', 'Ukuran');
 app.KernelSize = uidropdown(g, ...
     'Items', {'3', '5', '7', '9'}, 'Value', '3', ...
     'BackgroundColor', 'w');
-app.KernelSize.ValueChangedFcn = @(~, ~) rebuildKernelGrid(app);
+app.KernelSize.ValueChangedFcn = @(~, ~) onKernelSizeChanged(app);
 
-paramRow = uigridlayout(g, [1 2]);
-paramRow.ColumnWidth = {'1x', '1x'};
-paramRow.ColumnSpacing = 4;
-paramRow.Padding = [0 0 0 0];
-paramRow.BackgroundColor = [0.99 0.99 0.99];
-app.FilterParam1 = uieditfield(paramRow, 'numeric', 'Value', 2.0, ...
+% satu sel untuk parameter: field yang tampil bergantung pada jenis/kernel
+app.FilterParamLabel = uilabel(g, 'Text', 'Sigma');
+paramCell = uigridlayout(g, [1 1]);
+paramCell.Padding = [0 0 0 0];
+paramCell.BackgroundColor = [0.99 0.99 0.99];
+app.FilterParam1 = uieditfield(paramCell, 'numeric', 'Value', 2.0, ...
     'Tooltip', 'Gaussian: sigma | Sharpen: bobot');
-app.FilterParam2 = uieditfield(paramRow, 'numeric', 'Value', 15, ...
+app.FilterParam1.Layout.Row = 1;
+app.FilterParam1.Layout.Column = 1;
+app.FilterParam1.ValueChangedFcn = @(~, ~) fillKernelTable(app);
+app.FilterParam2 = uieditfield(paramCell, 'numeric', 'Value', 15, ...
     'Tooltip', 'Median: ukuran window');
+app.FilterParam2.Layout.Row = 1;
+app.FilterParam2.Layout.Column = 1;
 
-% tempat grid kernel kustom dibuat/dibangun ulang
-app.KernelHost = uipanel(g, 'Title', 'Kernel kustom', 'BorderType', 'line', ...
+% grid kernel: uitable supaya mengetik pada sel terpilih langsung menimpa nilainya
+app.KernelHost = uipanel(g, 'Title', 'Kernel', 'BorderType', 'line', ...
     'BackgroundColor', 'w');
-app.KernelHost.Layout.Row = 4;
+app.KernelHost.Layout.Row = 5;
 app.KernelHost.Layout.Column = [1 2];
 app.KernelLayout = uigridlayout(app.KernelHost, [1 1]);
 app.KernelLayout.Padding = [2 2 2 2];
 app.KernelLayout.BackgroundColor = 'w';
+app.KernelTable = uitable(app.KernelLayout, ...
+    'Data', zeros(3), ...
+    'ColumnName', {}, 'RowName', {}, ...
+    'ColumnEditable', true, ...
+    'ColumnWidth', 'auto', ...
+    'FontSize', 12, ...
+    'RowStriping', 'off', ...
+    'CellEditCallback', @(~, evt) onKernelCellEdited(app, evt));
+addStyle(app.KernelTable, uistyle('HorizontalAlignment', 'center'));
 
-app = rebuildKernelGrid(app);
+fillKernelTable(app);
 updateFilteringFields(app);
 end
 
@@ -764,52 +779,82 @@ updateIntensityFields(app);
 end
 
 function updateFilteringFields(app)
-if ~isfield(app, 'FilterType') || isempty(app.FilterType)
+if isempty(app.FilterType)
     return;
 end
 jenis = app.FilterType.Value;
 isLinear = strcmp(jenis, 'linear');
 isMedian = strcmp(jenis, 'median');
+src = app.KernelSource.Value;
+hasParam1 = isLinear && any(strcmp(src, {'gaussian', 'sharpen'}));
 
 app.KernelSource.Visible  = isLinear;
 app.KernelSource.Enable   = isLinear;
 app.KernelSize.Visible    = isLinear;
 app.KernelSize.Enable     = isLinear;
-app.FilterParam1.Visible  = isLinear && ~strcmp(app.KernelSource.Value, 'custom');
-app.FilterParam1.Enable  = isLinear && ~strcmp(app.KernelSource.Value, 'custom');
+app.FilterParam1.Visible  = hasParam1;
+app.FilterParam1.Enable   = hasParam1;
 app.FilterParam2.Visible  = isMedian;
 app.FilterParam2.Enable   = isMedian;
-app.KernelHost.Visible    = isLinear && strcmp(app.KernelSource.Value, 'custom');
+app.FilterParamLabel.Visible = hasParam1 || isMedian;
+app.KernelHost.Visible    = isLinear;
 
-src = app.KernelSource.Value;
-if isLinear
-    switch src
-        case 'gaussian'
-            app.FilterParam1.Tooltip = 'Sigma distribusi Gaussian';
-        case 'sharpen'
-            app.FilterParam1.Tooltip = 'Bobot sharpen';
-        otherwise
-            app.FilterParam1.Tooltip = 'Parameter';
-    end
+if isMedian
+    app.FilterParamLabel.Text = 'Ukuran window';
+elseif strcmp(src, 'sharpen')
+    app.FilterParamLabel.Text = 'Bobot';
+    app.FilterParam1.Tooltip = 'Bobot sharpen';
+else
+    app.FilterParamLabel.Text = 'Sigma';
+    app.FilterParam1.Tooltip = 'Sigma distribusi Gaussian';
 end
 end
 
-function app = rebuildKernelGrid(app)
-% hapus isi panel lama karena uigridlayout butuh parent yang kosong
-if ~isempty(app.KernelHost.Children)
-    delete(app.KernelHost.Children);
+function onKernelSourceChanged(app)
+updateFilteringFields(app);
+fillKernelTable(app);
 end
 
+function onKernelSizeChanged(app)
 n = str2double(app.KernelSize.Value);
-if isempty(n) || mod(n, 2) == 0
-    n = 3;
+if strcmp(app.KernelSource.Value, 'custom')
+    % pertahankan isi lama di tengah, sisanya nol
+    old = app.KernelTable.Data;
+    m = min(n, size(old, 1));
+    o = (size(old, 1) - m) / 2;
+    q = (n - m) / 2;
+    new = zeros(n);
+    new(q + 1:q + m, q + 1:q + m) = old(o + 1:o + m, o + 1:o + m);
+    app.KernelTable.Data = new;
+else
+    fillKernelTable(app);
+end
 end
 
-app.KernelLayout = uigridlayout(app.KernelHost, [1 1]);
-app.KernelLayout.Padding = [2 2 2 2];
-app.KernelLayout.BackgroundColor = 'w';
+function fillKernelTable(app)
+% isi grid dengan kernel bawaan sesuai pilihan; custom tidak diubah
+src = app.KernelSource.Value;
+if strcmp(src, 'custom')
+    return;
+end
+n = str2double(app.KernelSize.Value);
+k = presetKernel(src, n, app.FilterParam1.Value);
+if isempty(k)
+    return;     % parameter belum valid (mis. sigma <= 0), biarkan grid apa adanya
+end
+app.KernelTable.Data = k;
+end
 
-app.KernelFields = buildKernelGrid(app.KernelLayout, n);
+function onKernelCellEdited(app, evt)
+% isian tidak valid dikembalikan; isian valid mengubah kernel jadi custom
+if ~isnumeric(evt.NewData) || isnan(evt.NewData)
+    app.KernelTable.Data(evt.Indices(1), evt.Indices(2)) = evt.PreviousData;
+    return;
+end
+if ~strcmp(app.KernelSource.Value, 'custom')
+    app.KernelSource.Value = 'custom';
+    updateFilteringFields(app);
+end
 end
 
 function onTakeBounds(app)
@@ -991,7 +1036,7 @@ switch app.TechBox.Value
                 case 'sharpen'
                     params.sharpWeight = app.FilterParam1.Value;
                 case 'custom'
-                    params.kernel          = readKernelGrid(app.KernelFields);
+                    params.kernel          = app.KernelTable.Data;
                     params.normalizeKernel = true;
             end
         end
