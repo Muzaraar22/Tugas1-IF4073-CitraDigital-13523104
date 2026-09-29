@@ -50,7 +50,7 @@ classdef AppState < handle
         HistInPanel   = []; HistOutPanel   = [];
         AxHistIn      = []; AxHistOut      = [];
         ChInPanel     = []; ChOutPanel     = [];
-        AxChIn        = []; AxChOut        = []
+        AxChIn        = []; AxChOut        = []; HistMode = []; HistModeOut = []
         StatsPanel    = []; StatsTable     = []
         LogPanel      = []; LogText        = []; NoteText = []
     end

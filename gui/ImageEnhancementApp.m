@@ -404,8 +404,12 @@ app.AxHistOut = makeHistogramAxes(app.HistOutPanel);
 % baris 3: histogram per kanal
 app.ChInPanel  = makeDisplayPanel(g, 'HISTOGRAM KANAL R,G,B - MASUKAN', 3, 1);
 app.ChOutPanel = makeDisplayPanel(g, 'HISTOGRAM KANAL R,G,B - HASIL',    3, 2);
-app.AxChIn  = makeChannelAxes(app.ChInPanel);
-app.AxChOut = makeChannelAxes(app.ChOutPanel);
+
+% dropdown tampilan histogram RGB di tiap panel (keduanya disinkronkan)
+[app.HistMode, chInGrid] = makeHistModeGrid(app, app.ChInPanel);
+app.AxChIn = makeChannelAxes(chInGrid);
+[app.HistModeOut, chOutGrid] = makeHistModeGrid(app, app.ChOutPanel);
+app.AxChOut = makeChannelAxes(chOutGrid);
 
 % baris 4: tabel fitur + catatan
 app.StatsPanel = makeDisplayPanel(g, 'FITUR CITRA', 4, 1);
@@ -455,9 +459,28 @@ ax.Layout.Row = 1;
 ax.Layout.Column = 1;
 end
 
+function [dd, grid] = makeHistModeGrid(app, panel)
+grid = uigridlayout(panel, [2 1]);
+grid.RowHeight = {22, '1x'};
+grid.RowSpacing = 2;
+grid.Padding = [0 0 0 0];
+grid.BackgroundColor = 'w';
+dd = uidropdown(grid, ...
+    'Items', {'R,G,B terpisah', 'R,G,B gabungan'}, ...
+    'ItemsData', {'separate', 'combined'}, ...
+    'Value', 'separate', ...
+    'BackgroundColor', 'w', ...
+    'Tooltip', 'Tampilan histogram RGB: tiga histogram terpisah atau satu histogram gabungan');
+dd.Layout.Row = 1;
+dd.ValueChangedFcn = @(src, ~) onHistModeChanged(app, src.Value);
+end
+
 function ax = makeChannelAxes(parent)
 % tiga axes kecil untuk histogram kanal R, G, B di dalam satu panel
 lay = uigridlayout(parent, [1 3]);
+if isa(parent, 'matlab.ui.container.GridLayout')
+    lay.Layout.Row = 2;
+end
 lay.ColumnWidth = {'1x', '1x', '1x'};
 lay.ColumnSpacing = 2;
 lay.Padding = [2 2 2 2];
@@ -897,6 +920,7 @@ drawImageAndHistograms( ...
 
 % judul grayscale di kolom masukan haris sama dengan kolom hasil
 title(app.AxHistIn, 'Histogram Abu-abu - Masukan');
+applyHistMode(app.AxChIn, app.Original, app.HistMode.Value);
 end
 
 function drawOutputColumn(app)
@@ -911,6 +935,73 @@ drawImageAndHistograms( ...
     app.AxImageOut, app.AxHistOut, pickChannels(app.AxChOut, isColor), ...
     app.Result, 'hasil', [0.25 0.25 0.25]);
 title(app.AxHistOut, 'Histogram Abu-abu - Hasil');
+applyHistMode(app.AxChOut, app.Result, app.HistModeOut.Value);
+end
+
+function onHistModeChanged(app, mode)
+app.HistMode.Value    = mode;
+app.HistModeOut.Value = mode;
+applyHistMode(app.AxChIn,  app.Original, mode);
+applyHistMode(app.AxChOut, app.Result,   mode);
+end
+
+function applyHistMode(axCh, img, mode)
+% gambar ulang histogram RGB sesuai pilihan dropdown (terpisah / gabungan)
+if isempty(img) || size(img, 3) ~= 3
+    return;
+end
+
+combined = strcmp(mode, 'combined');
+warna = {'r', 'g', 'b'};
+nama  = {'R', 'G', 'B'};
+
+for k = 1:3
+    resetAxes(axCh(k));
+end
+
+if combined
+    axCh(1).Layout.Column = [1 3];
+    showAxes(axCh(1));
+    hold(axCh(1), 'on');
+    for k = 1:3
+        h = computeHistogram(img(:, :, k));
+        plot(axCh(1), 0:255, h, 'Color', warna{k}, 'LineWidth', 1.2, ...
+            'DisplayName', nama{k});
+    end
+    hold(axCh(1), 'off');
+    title(axCh(1), 'Histogram RGB Gabungan');
+    xlabel(axCh(1), 'Intensitas'); ylabel(axCh(1), 'Jumlah Piksel');
+    xlim(axCh(1), [0 255]);
+    legend(axCh(1), 'show');
+    hideAxes(axCh(2));
+    hideAxes(axCh(3));
+else
+    axCh(1).Layout.Column = 1;
+    for k = 1:3
+        h = computeHistogram(img(:, :, k));
+        showAxes(axCh(k));
+        bar(axCh(k), 0:255, h, warna{k});
+        title(axCh(k), ['Kanal ' nama{k}]);
+        xlabel(axCh(k), 'Intensitas'); ylabel(axCh(k), 'Jumlah Piksel');
+    end
+end
+end
+
+function resetAxes(ax)
+legend(ax, 'off');
+cla(ax);
+title(ax, ''); xlabel(ax, ''); ylabel(ax, '');
+end
+
+function showAxes(ax)
+ax.Visible = 'on';
+ax.Toolbar.Visible = 'on';
+end
+
+function hideAxes(ax)
+% Visible off saja menyisakan toolbar (menu 3 titik), jadi toolbar ikut dimatikan
+ax.Visible = 'off';
+ax.Toolbar.Visible = 'off';
 end
 
 function ax = pickChannels(allAxes, isColor)
@@ -928,55 +1019,36 @@ if isempty(app.Original)
     return;
 end
 
-statsBefore = imageStatistics(app.Original);
+sb = imageStatistics(app.Original);
+colMasukan = statsColumn(sb, sb.isColor);
 
 if isempty(app.Result)
-    colHasil = repmat({'-'}, 6, 1);
+    colHasil = repmat({'-'}, 7, 1);
 else
-    statsAfter   = imageStatistics(app.Result);
-    entropyAfter = statsAfter.entropy;
-
-    if statsBefore.isColor
-        colHasil = { ...
-            num2str(statsAfter.grayscale.min), ...
-            num2str(statsAfter.grayscale.max), ...
-            sprintf('%.2f', statsAfter.grayscale.mean), ...
-            sprintf('%.2f', statsAfter.grayscale.std), ...
-            sprintf('%.4f', entropyAfter), ...
-            sprintf('%d,%d,%d', statsAfter.channels(1).min, ...
-                    statsAfter.channels(2).min, statsAfter.channels(3).min)};
-    else
-        colHasil = { ...
-            num2str(statsAfter.grayscale.min), ...
-            num2str(statsAfter.grayscale.max), ...
-            sprintf('%.2f', statsAfter.grayscale.mean), ...
-            sprintf('%.2f', statsAfter.grayscale.std), ...
-            sprintf('%.4f', entropyAfter), ...
-            '-'};
-    end
-end
-
-sb = statsBefore;
-colMasukan = { ...
-    num2str(sb.grayscale.min), ...
-    num2str(sb.grayscale.max), ...
-    sprintf('%.2f', sb.grayscale.mean), ...
-    sprintf('%.2f', sb.grayscale.std), ...
-    sprintf('%.4f', sb.entropy)};
-
-if sb.isColor
-    colMasukan{end + 1} = sprintf('%d,%d,%d', ...
-        sb.channels(1).min, sb.channels(2).min, sb.channels(3).min);
-else
-    colMasukan{end + 1} = '-';
-    if numel(colHasil) == 6, colHasil{end} = '-'; else, colHasil{6} = '-'; end
+    colHasil = statsColumn(imageStatistics(app.Result), sb.isColor);
 end
 
 names = {'Min intensitas', 'Maks intensitas', 'Rerata', ...
-         'Simpangan baku', 'Entropi (bit)', 'Min per kanal R,G,B'};
+         'Simpangan baku', 'Entropi (bit)', ...
+         'Min per kanal R,G,B', 'Maks per kanal R,G,B'};
 
 app.StatsTable.ColumnName = {'Fitur', 'Masukan', 'Hasil'};
 app.StatsTable.Data = [names(:), colMasukan(:), colHasil(:)];
+end
+
+function col = statsColumn(s, showChannels)
+% satu kolom tabel fitur; baris kanal diisi '-' kalau citra abu-abu
+col = { ...
+    num2str(s.grayscale.min), ...
+    num2str(s.grayscale.max), ...
+    sprintf('%.2f', s.grayscale.mean), ...
+    sprintf('%.2f', s.grayscale.std), ...
+    sprintf('%.4f', s.entropy), ...
+    '-', '-'};
+if showChannels && s.isColor
+    col{6} = sprintf('%d,%d,%d', s.channels(1).min, s.channels(2).min, s.channels(3).min);
+    col{7} = sprintf('%d,%d,%d', s.channels(1).max, s.channels(2).max, s.channels(3).max);
+end
 end
 
 function setEmptyState(app)
