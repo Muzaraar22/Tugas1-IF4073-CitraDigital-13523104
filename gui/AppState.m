@@ -43,7 +43,7 @@ classdef AppState < handle
 
         % panel filtering
         FilterType  = []; KernelSource = []; KernelSize = [];
-        FilterParam1 = []; FilterParam2 = []; FilterParamLabel = [];
+        FilterParam1 = []; FilterParam2 = []; FilterParamLabel = []; NormalizeKernel = [];
         KernelHost  = []; KernelLayout = []; KernelTable = [];
 
         % panel tampilan kanan

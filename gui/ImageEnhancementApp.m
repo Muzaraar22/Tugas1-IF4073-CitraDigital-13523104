@@ -385,8 +385,8 @@ pnl = uipanel(app.ParamStack, 'Title', '', 'BorderType', 'line', ...
 pnl.Layout.Row = 4;
 app.Panels.filtering = pnl;
 
-g = uigridlayout(pnl, [5 2]);
-g.RowHeight   = {22, 22, 22, 22, '1x'};
+g = uigridlayout(pnl, [6 2]);
+g.RowHeight   = {22, 22, 22, 22, 22, '1x'};
 g.ColumnWidth = {90, '1x'};
 g.RowSpacing  = 6;
 g.ColumnSpacing = 4;
@@ -428,10 +428,19 @@ app.FilterParam2 = uieditfield(paramCell, 'numeric', 'Value', 15, ...
 app.FilterParam2.Layout.Row = 1;
 app.FilterParam2.Layout.Column = 1;
 
+% normalisasi dilakukan di backend (applyEnhancement), grid hanya menampilkan nilai mentah
+app.NormalizeKernel = uicheckbox(g, ...
+    'Text', 'Normalisasi kernel (bagi dengan jumlah elemen)', ...
+    'Value', true, ...
+    'Tooltip', ['Aktif: kernel dibagi jumlah elemennya sebelum dikonvolusi. ' ...
+                'Nonaktif: nilai grid dipakai apa adanya, hasil hanya di-clip ke 0-255.']);
+app.NormalizeKernel.Layout.Row = 5;
+app.NormalizeKernel.Layout.Column = [1 2];
+
 % grid kernel: uitable supaya mengetik pada sel terpilih langsung menimpa nilainya
 app.KernelHost = uipanel(g, 'Title', 'Kernel', 'BorderType', 'line', ...
     'BackgroundColor', 'w');
-app.KernelHost.Layout.Row = 5;
+app.KernelHost.Layout.Row = 6;
 app.KernelHost.Layout.Column = [1 2];
 app.KernelLayout = uigridlayout(app.KernelHost, [1 1]);
 app.KernelLayout.Padding = [2 2 2 2];
@@ -798,6 +807,7 @@ app.FilterParam2.Visible  = isMedian;
 app.FilterParam2.Enable   = isMedian;
 app.FilterParamLabel.Visible = hasParam1 || isMedian;
 app.KernelHost.Visible    = isLinear;
+app.NormalizeKernel.Visible = isLinear;
 
 if isMedian
     app.FilterParamLabel.Text = 'Ukuran window';
@@ -1030,14 +1040,15 @@ switch app.TechBox.Value
             params.kernelSource = app.KernelSource.Value;
             params.kernelSize   = str2double(app.KernelSize.Value);
 
-            switch app.KernelSource.Value
-                case 'gaussian'
-                    params.sigma = app.FilterParam1.Value;
-                case 'sharpen'
-                    params.sharpWeight = app.FilterParam1.Value;
-                case 'custom'
-                    params.kernel          = app.KernelTable.Data;
-                    params.normalizeKernel = true;
+            normalize = app.NormalizeKernel.Value;
+            if strcmp(app.KernelSource.Value, 'custom') || ~normalize
+                params.kernelSource    = 'custom';
+                params.kernel          = app.KernelTable.Data;
+                params.normalizeKernel = normalize;
+            elseif strcmp(app.KernelSource.Value, 'gaussian')
+                params.sigma = app.FilterParam1.Value;
+            elseif strcmp(app.KernelSource.Value, 'sharpen')
+                params.sharpWeight = app.FilterParam1.Value;
             end
         end
 
