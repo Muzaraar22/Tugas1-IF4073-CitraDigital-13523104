@@ -192,7 +192,7 @@ pnl.Layout.Row = 1;
 app.Panels.intensity = pnl;
 
 g = uigridlayout(pnl, [4 2]);
-g.RowHeight   = {22, 22, 22, 22};
+g.RowHeight   = {22, 22, 22, 22, 22};
 g.ColumnWidth = {110, '1x'};
 g.RowSpacing  = 3;
 g.ColumnSpacing = 4;
@@ -215,18 +215,28 @@ uilabel(g, 'Text', 'gamma (power)');
 app.IntensityGamma = uieditfield(g, 'numeric', 'Value', 1.0, ...
     'Tooltip', 'gamma < 1 mencerahkan, gamma > 1 menggelapkan');
 
-uilabel(g, 'Text', 'r1, r2 (stretch)');
+uilabel(g, 'Text', 'Input min, maks');
 boundsRow = uigridlayout(g, [1 3]);
 boundsRow.ColumnWidth = {'1x', '1x', 62};
 boundsRow.Padding = [0 0 0 0];
 boundsRow.BackgroundColor = [0.99 0.99 0.99];
 app.IntensityR1 = uieditfield(boundsRow, 'numeric', 'Value', 0, ...
-    'Tooltip', 'Batas bawah rentang yang akan dipetakan ke 0');
+    'Tooltip', 'Batas bawah rentang input (default: min grayscale citra)');
 app.IntensityR2 = uieditfield(boundsRow, 'numeric', 'Value', 255, ...
-    'Tooltip', 'Batas atas rentang yang akan dipetakan ke 255');
+    'Tooltip', 'Batas atas rentang input (default: maks grayscale citra)');
 uibutton(boundsRow, 'Text', 'Ambil', 'FontSize', 9, ...
-    'Tooltip', 'Isi r1 dan r2 dengan min/maks citra yang sedang dimuat', ...
+    'Tooltip', 'Isi dengan min/maks grayscale citra yang sedang dimuat', ...
     'ButtonPushedFcn', @(~, ~) onTakeBounds(app));
+
+uilabel(g, 'Text', 'Target min, maks');
+targetRow = uigridlayout(g, [1 2]);
+targetRow.ColumnWidth = {'1x', '1x'};
+targetRow.Padding = [0 0 0 0];
+targetRow.BackgroundColor = [0.99 0.99 0.99];
+app.IntensitySMin = uieditfield(targetRow, 'numeric', 'Value', 0, ...
+    'Limits', [0 255], 'Tooltip', 'Nilai target untuk batas bawah input (default 0)');
+app.IntensitySMax = uieditfield(targetRow, 'numeric', 'Value', 255, ...
+    'Limits', [0 255], 'Tooltip', 'Nilai target untuk batas atas input (default 255)');
 
 updateIntensityFields(app);
 end
@@ -499,6 +509,7 @@ try
     app.Original = img;
     app.Result   = [];
     app.Steps    = {};
+    fillSourceRange(app);
 
     % Update info label
     app.InfoLabel.Text = sprintf('Eksternal: %s', fileName);
@@ -552,6 +563,7 @@ end
 app.Original = img;
 app.Result   = [];
 app.Steps    = {};
+fillSourceRange(app);
 
 % baris kanal histogram hanya relevan untuk citra berwarna
 isColor = (size(img, 3) == 3);
@@ -630,6 +642,8 @@ app.IntensityC.Enable        = logical(isLog || isPower);
 app.IntensityGamma.Enable    = isPower;
 app.IntensityR1.Enable       = isStretch;
 app.IntensityR2.Enable       = isStretch;
+app.IntensitySMin.Enable     = isStretch;
+app.IntensitySMax.Enable     = isStretch;
 
 if isPower && app.IntensityGamma.Value == 1.0
     % beri nilai awal yang bermakna supaya tidak identik
@@ -692,10 +706,18 @@ if isempty(app.Original)
         'Citra belum dimuat');
     return;
 end
-mn = double(min(app.Original(:)));
-mx = double(max(app.Original(:)));
-app.IntensityR1.Value = mn;
-app.IntensityR2.Value = mx;
+fillSourceRange(app);
+end
+
+function fillSourceRange(app)
+% isi rentang input dengan min/maks grayscale citra (RGB -> grayscale)
+img = app.Original;
+if isempty(img), return; end
+if size(img, 3) == 3
+    img = rgb2gray(img);
+end
+app.IntensityR1.Value = double(min(img(:)));
+app.IntensityR2.Value = double(max(img(:)));
 end
 
 function onUseReference(app)
@@ -814,7 +836,9 @@ switch app.TechBox.Value
             'c',     app.IntensityC.Value, ...
             'gamma', app.IntensityGamma.Value, ...
             'r1',    app.IntensityR1.Value, ...
-            'r2',    app.IntensityR2.Value);
+            'r2',    app.IntensityR2.Value, ...
+            's1',    app.IntensitySMin.Value, ...
+            's2',    app.IntensitySMax.Value);
 
     case 'Histogram Equalization'
         tech = 'equalization';

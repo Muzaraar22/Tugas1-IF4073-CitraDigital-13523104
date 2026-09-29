@@ -10,11 +10,12 @@ function [result, methodName, paramText] = applyEnhancement(img, technique, para
 % paramText  : string parameter efektif yang dipakai (untuk laporan)
 %
 % Daftar field params per technique:
-%   intensity     .mode .c .gamma .r1 .r2
+%   intensity     .mode .c .gamma .r1 .r2 .s1 .s2
 %                 mode 'negative'  : tidak butuh param
 %                 mode 'log'       : .c (opsional, otomatis kalau kosong)
 %                 mode 'power'     : .c dan .gamma
-%                 mode 'stretch'   : .r1 dan .r2
+%                 mode 'stretch'   : .r1 dan .r2 (rentang input), .s1 dan .s2
+%                                    (rentang target, default 0 dan 255)
 %   equalization  .variant                % 'grayscale' | 'rgb' | 'lightness'
 %   specification .reference              % citra array atau path file
 %   filtering     .jenis .kernelSource .kernelSize .sigma .sharpWeight
@@ -101,19 +102,27 @@ switch mode
     case 'stretch'
         r1 = getScalar(params, 'r1', []);
         r2 = getScalar(params, 'r2', []);
+        s1 = getScalar(params, 's1', 0);      % default target 0..255
+        s2 = getScalar(params, 's2', 255);
         if isempty(r1) || isempty(r2)
             error('applyEnhancement:paramKurang', 'Mode stretch butuh parameter .r1 dan .r2. Tekan "Ambil min/maks citra" untuk mengisinya.');
         end
         checkRangeScalar(r1, 'r1');
         checkRangeScalar(r2, 'r2');
+        checkRangeScalar(s1, 's1');
+        checkRangeScalar(s2, 's2');
         if r1 >= r2
             error('applyEnhancement:rentangTidakValid', ...
                 ['Batas rentang contrast stretching tidak valid: r1 (%g) harus lebih kecil ' ...
                  'dari r2 (%g). Ambil min/maks citra dulu supaya r1 < r2.'], r1, r2);
         end
-        result = intensityTransform(img, 'stretch', [r1 r2]);
+        if s1 >= s2
+            error('applyEnhancement:rentangTargetTidakValid', ...
+                'Rentang target tidak valid: s1 (%g) harus lebih kecil dari s2 (%g).', s1, s2);
+        end
+        result = intensityTransform(img, 'stretch', [r1 r2 s1 s2]);
         methodName = 'Intensity Transformation - contrast stretching';
-        paramText  = sprintf('r1 = %g, r2 = %g', r1, r2);
+        paramText  = sprintf('input [%g, %g] -> target [%g, %g]', r1, r2, s1, s2);
 
     otherwise
         error('applyEnhancement:modeTidakDikenal', 'Mode intensity tidak dikenal: %s. Pilih negative, log, power, atau stretch.', mode);
