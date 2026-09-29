@@ -1,5 +1,8 @@
 function plotHistogram(img, judul)
-% menampilkan citra + histogramnya
+% Tampilkan citra + histogramnya di figure baru
+
+% img: citra grayscale (2D) atau RGB (3D), uint8
+% judul: judul figure-nya, boleh dikosongkan
 
 if nargin < 2, judul = ''; end
 

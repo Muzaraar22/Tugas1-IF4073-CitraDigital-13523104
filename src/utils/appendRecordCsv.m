@@ -1,12 +1,9 @@
 function appendRecordCsv(csvPath, header, row)
-% appendRecordCsv - menambah satu baris ke berkas rekap CSV.
-%
-%   csvPath : path lengkap file CSV tujuan (misalnya 'out/rekapan.csv')
-%   header  : cell array nama kolom, hanya dipakai bila file belum ada
-%   row     : cell array nilai baris baru, urutannya harus sama dengan header
-%
-%   Dipakai bersama oleh GUI (tombol "Simpan Rekapan") dan oleh script batch,
-%   supaya urutan kolom tidak pernah berbeda antara keduanya.
+% Tambah satu baris ke berkas rekap CSV
+
+% csvPath: path lengkap file CSV tujuan, contoh 'out/rekapan.csv'
+% header: nama kolom, hanya apabila kalau file belum ada
+% row: nilai baris baru, urutannya harus sama dengan header
 
 validateattributes(csvPath, {'char', 'string'}, {'nonempty'}, ...
     'appendRecordCsv', 'csvPath');
@@ -47,8 +44,7 @@ end
 
 % ---------------------------------------------------------------------------
 function out = csvEscape(cellValues)
-% csvEscape - beri tanda kutip ganda pada nilai yang mengandung koma, tanda
-% kutip, atau baris baru, sesuai kaidah RFC 4180.
+% Beri tanda kutip pada nilai yang mengandung koma atau kutip, ikut RFC 4180
 out = cell(size(cellValues));
 for k = 1:numel(cellValues)
     v = cellValues{k};
@@ -72,7 +68,6 @@ end
 
 % ---------------------------------------------------------------------------
 function nl = newlineString()
-% newlineString - baris baru LF supaya keluaran konsisten di semua OS
-% (mengacu pada .gitattributes proyek yang memakai eol=lf).
+% Newline LF biar keluaran konsisten di semua OS
 nl = newline;
 end

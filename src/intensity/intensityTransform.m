@@ -1,4 +1,11 @@
 function result = intensityTransform(img, mode, param)
+% Transformasi intensitas piksel
+
+% img: citra grayscale (2D) atau RGB (3D), uint8
+% mode: negative / log / power / stretch / stretchrgb
+% param: tergantung mode
+% result: citra hasil, uint8
+
 img = double(img);
 
 %hasil = s, img = r kalau ngikutin ppt

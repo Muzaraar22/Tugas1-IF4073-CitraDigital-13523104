@@ -1,7 +1,9 @@
 function result = medianFilter(img, ukuranWindow)
-%img          : citra grayscale (2D) atau RGB (3D), uint8
-%ukuranWindow : ganjil
-%hasil        : citra (uint8)
+% Filter median, bagus untuk menghilangkan noise bintik
+
+% img: citra grayscale (2D) atau RGB (3D), uint8
+% ukuranWindow: panjang sisi window, harus ganjil
+% result: citra hasil, uint8
 
 if size(img,3) == 3
     R = medianFilter(img(:,:,1), ukuranWindow);

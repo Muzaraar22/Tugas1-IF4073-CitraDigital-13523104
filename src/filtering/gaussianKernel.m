@@ -1,4 +1,9 @@
 function kernel = gaussianKernel(ukuran, sigma)
+% Bikin kernel Gaussian berukuran ganjil
+
+% ukuran: panjang sisi kernel, harus ganjil
+% sigma: lebar gaussian, makin besar makin blur
+% kernel: matriks ukuran x ukuran, jumlah elemennya 1
 
 pusat = (ukuran + 1) / 2;
 kernel = zeros(ukuran, ukuran);

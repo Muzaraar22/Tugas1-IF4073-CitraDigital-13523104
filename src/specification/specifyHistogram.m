@@ -1,8 +1,9 @@
 function result = specifyHistogram(img, ref)
-%cocokkan histogram img ke histogram ref
+% Cocokkan histogram img ke histogram ref
 
-%img, ref : citra grayscale (2D) atau RGB (3D), uint8
-%hasil   : citra img yg sudah di matching
+% img: citra sumber (grayscale 2D atau RGB 3D), uint8
+% ref: citra referensi sebagai histogram tujuannya, uint8
+% result: citra img yang histogramnya sudah di-matching, uint8
 
 if size(img,3) == 3
     Limg = getLightnessChannel(img);

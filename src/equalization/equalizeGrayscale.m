@@ -1,5 +1,8 @@
 function result = equalizeGrayscale(img)
-%equalization murni untuk 2D
+% Equalization murni untuk citra 2D
+
+% img: citra grayscale 2D, uint8
+% result: citra hasil equalization, uint8
 h = computeHistogram(img);
 totalPiksel = numel(img);
 

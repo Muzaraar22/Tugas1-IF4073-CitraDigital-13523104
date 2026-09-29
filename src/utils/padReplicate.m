@@ -1,6 +1,8 @@
 function padded = padReplicate(img, padRows, padCols)
-%padRows/padCols : jumlah baris/kolom padding, tidak harus sama kotak
-%padded          : citra 2D yang tepinya sudah direplikasi (kelas double)
+% Padding dengan mereplikasi piksel tepi
+
+% padRows, padCols: jumlah baris/kolom padding, tidak harus sama
+% padded: citra 2D yang tepinya sudah direplikasi, kelas double
 
 %padding replikasi piksel
 [tinggi, lebar] = size(img);

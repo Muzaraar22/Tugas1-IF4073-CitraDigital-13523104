@@ -1,10 +1,9 @@
 function [nilaiMin, nilaiMax, nilaiMean, nilaiStd] = extractFeature(img)
-%extractFeature - hitung min, max, mean, std dari citra grayscale (biar
-%analisis atau compare di laporan mudah
+% Ambil min, max, mean, dan std dari citra grayscale
 
-%img : citra grayscale 2D, uint8
-%nilaiMin, nilaiMax : intensitas piksel terendah/tertinggi yang muncul
-%nilaiMean, nilaiStd : rata-rata & standar deviasi intensitas
+% img: citra grayscale 2D, uint8
+% nilaiMin, nilaiMax: intensitas piksel terendah/tertinggi yang muncul
+% nilaiMean, nilaiStd: rata-rata dan standar deviasi intensitas
     h = computeHistogram(img);
     totalPiksel = sum(h);
     nilai = 0:255;

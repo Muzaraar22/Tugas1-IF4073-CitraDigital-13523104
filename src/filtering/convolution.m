@@ -1,6 +1,9 @@
 function result = convolution(img, kernel)
-%kernel : ganjil x ganjil, dinormalisasikan dulu baru panggil fungsi ini
-%hasil  : citra (uint8), ukuran sama dengan input
+% Konvolusi 2D dengan kernel apapun
+
+% img: citra grayscale (2D) atau RGB (3D), uint8
+% kernel: kernel ganjil x ganjil, dinormalisasikan dulu sebelum dipanggil
+% result: citra hasil, ukuran sama dengan input, uint8
 
 if size(img,3) == 3
     R = convolution(img(:,:,1), kernel); %layer depth ke 1

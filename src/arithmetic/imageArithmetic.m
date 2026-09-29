@@ -1,12 +1,10 @@
 function result = imageArithmetic(a, b, operation)
-% tambah/kurang dua citra berukuran sama, per piksel
-%
-% a, b      : citra uint8 (grayscale 2D atau RGB 3D), ukuran dan jumlah kanal sama
-% operation : 'add'      -> a + b
-%             'subtract' -> a - b
-%             'reverse'  -> b - a
-%
-% result    : citra uint8, ukuran sama dengan a; nilai di luar 0-255 di-clip
+% Tambah/kurang dua citra berukuran sama, per piksel
+
+% a: citra pertama (grayscale 2D atau RGB 3D), uint8
+% b: citra kedua, ukuran dan jumlah kanalnya sama dengan a
+% operation: 'add' -> a+b, 'subtract' -> a-b, 'reverse' -> b-a
+% result: citra uint8, nilai di luar 0-255 di-clip
 
 if ~isequal(size(a), size(b))
     if size(a, 3) ~= size(b, 3)

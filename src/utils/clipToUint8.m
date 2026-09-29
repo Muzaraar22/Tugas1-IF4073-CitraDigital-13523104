@@ -1,6 +1,7 @@
 function result = clipToUint8(result)
-% result : citra 2D/3D bertipe double (atau numerik lain)
-% mengembalikan uint8 dengan nilai dibatasi ke rentang 0-255
+% membatasi nilai ke rentang 0-255, lalu menjadikan uint8
+
+% result: citra 2D/3D bertipe double (atau numerik lain)
 
 %clip
 result(result < 0)   = 0;
