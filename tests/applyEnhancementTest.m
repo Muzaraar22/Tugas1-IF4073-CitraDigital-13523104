@@ -174,6 +174,25 @@ classdef applyEnhancementTest < matlab.unittest.TestCase
                 struct('mode', 'stretch', 'r1', 200, 'r2', 100)), 'applyEnhancement:rentangTidakValid');
         end
 
+        function stretchRgbKeepsRgbUint8(testCase)
+            out = applyEnhancement(testCase.Rgb, 'intensity', struct('mode', 'stretchRGB', ...
+                'r1rgb', [10 20 30], 'r2rgb', [200 210 220]));
+            testCase.verifyClass(out, 'uint8');
+            testCase.verifySize(out, size(testCase.Rgb));
+        end
+
+        function stretchRgbOnGrayThrows(testCase)
+            testCase.verifyError(@() applyEnhancement(testCase.Gray, 'intensity', ...
+                struct('mode', 'stretchRGB', 'r1rgb', [0 0 0], 'r2rgb', [255 255 255])), ...
+                'applyEnhancement:butuhRGB');
+        end
+
+        function stretchRgbBadChannelRangeThrows(testCase)
+            testCase.verifyError(@() applyEnhancement(testCase.Rgb, 'intensity', ...
+                struct('mode', 'stretchRGB', 'r1rgb', [0 50 0], 'r2rgb', [255 50 255])), ...
+                'applyEnhancement:rentangTidakValid');
+        end
+
         function stretchMissingBoundsThrows(testCase)
             testCase.verifyError(@() applyEnhancement(testCase.Rgb, 'intensity', ...
                 struct('mode', 'stretch')), 'applyEnhancement:paramKurang');

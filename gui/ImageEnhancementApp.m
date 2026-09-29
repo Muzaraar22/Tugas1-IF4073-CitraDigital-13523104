@@ -191,19 +191,21 @@ pnl = uipanel(app.ParamStack, 'Title', '', 'BorderType', 'line', ...
 pnl.Layout.Row = 1;
 app.Panels.intensity = pnl;
 
-g = uigridlayout(pnl, [4 2]);
-g.RowHeight   = {22, 22, 22, 22, 22};
+g = uigridlayout(pnl, [5 2]);
+g.RowHeight   = {28, 28, 28, 'fit', 0};
 g.ColumnWidth = {110, '1x'};
-g.RowSpacing  = 3;
-g.ColumnSpacing = 4;
-g.Padding = [6 6 6 6];
+g.RowSpacing  = 10;
+g.ColumnSpacing = 6;
+g.Padding = [10 10 10 10];
 g.BackgroundColor = [0.99 0.99 0.99];
+app.IntensityGrid = g;
 
 uilabel(g, 'Text', 'Mode');
 app.IntensityMode = uidropdown(g, ...
-    'Items', {'negative', 'log', 'power', 'stretch'}, ...
+    'Items', {'negative', 'log', 'power', 'stretch', 'stretchRGB'}, ...
     'Value', 'stretch', ...
-    'BackgroundColor', 'w');
+    'BackgroundColor', 'w', ...
+    'Tooltip', 'stretchRGB: contrast stretching per kanal R,G,B (hanya untuk citra berwarna)');
 app.IntensityMode.ValueChangedFcn = @(~, ~) updateIntensityFields(app);
 
 uilabel(g, 'Text', 'c (log / power)');
@@ -215,9 +217,22 @@ uilabel(g, 'Text', 'gamma (power)');
 app.IntensityGamma = uieditfield(g, 'numeric', 'Value', 1.0, ...
     'Tooltip', 'gamma < 1 mencerahkan, gamma > 1 menggelapkan');
 
-uilabel(g, 'Text', 'Input min, maks');
-boundsRow = uigridlayout(g, [1 3]);
+% --- stretch (grayscale): satu rentang input dan satu rentang target --------
+grayHost = uigridlayout(g, [2 2]);
+grayHost.Layout.Row = 4;
+grayHost.Layout.Column = [1 2];
+grayHost.ColumnWidth = {110, '1x'};
+grayHost.RowHeight = {28, 28};
+grayHost.RowSpacing = 10;
+grayHost.ColumnSpacing = 6;
+grayHost.Padding = [0 0 0 0];
+grayHost.BackgroundColor = [0.99 0.99 0.99];
+app.IntensityGrayHost = grayHost;
+
+uilabel(grayHost, 'Text', 'Input min, maks');
+boundsRow = uigridlayout(grayHost, [1 3]);
 boundsRow.ColumnWidth = {'1x', '1x', 62};
+boundsRow.ColumnSpacing = 6;
 boundsRow.Padding = [0 0 0 0];
 boundsRow.BackgroundColor = [0.99 0.99 0.99];
 app.IntensityR1 = uieditfield(boundsRow, 'numeric', 'Value', 0, ...
@@ -228,9 +243,10 @@ uibutton(boundsRow, 'Text', 'Ambil', 'FontSize', 9, ...
     'Tooltip', 'Isi dengan min/maks grayscale citra yang sedang dimuat', ...
     'ButtonPushedFcn', @(~, ~) onTakeBounds(app));
 
-uilabel(g, 'Text', 'Target min, maks');
-targetRow = uigridlayout(g, [1 2]);
+uilabel(grayHost, 'Text', 'Target min, maks');
+targetRow = uigridlayout(grayHost, [1 2]);
 targetRow.ColumnWidth = {'1x', '1x'};
+targetRow.ColumnSpacing = 6;
 targetRow.Padding = [0 0 0 0];
 targetRow.BackgroundColor = [0.99 0.99 0.99];
 app.IntensitySMin = uieditfield(targetRow, 'numeric', 'Value', 0, ...
@@ -238,7 +254,56 @@ app.IntensitySMin = uieditfield(targetRow, 'numeric', 'Value', 0, ...
 app.IntensitySMax = uieditfield(targetRow, 'numeric', 'Value', 255, ...
     'Limits', [0 255], 'Tooltip', 'Nilai target untuk batas atas input (default 255)');
 
-updateIntensityFields(app);
+% --- stretchRGB: rentang input dan target per kanal -----------------------
+rgbHost = uigridlayout(g, [7 2]);
+rgbHost.Layout.Row = 5;
+rgbHost.Layout.Column = [1 2];
+rgbHost.ColumnWidth = {110, '1x'};
+rgbHost.RowHeight = repmat({28}, 1, 7);
+rgbHost.RowSpacing = 10;
+rgbHost.ColumnSpacing = 6;
+rgbHost.Padding = [0 0 0 0];
+rgbHost.BackgroundColor = [0.99 0.99 0.99];
+app.IntensityRGBHost = rgbHost;
+
+nama  = {'R', 'G', 'B'};
+warna = {[0.75 0 0], [0 0.55 0], [0 0 0.75]};
+app.IntensityRGBIn  = gobjects(3, 2);
+app.IntensityRGBOut = gobjects(3, 2);
+
+for k = 1:3
+    lbl = uilabel(rgbHost, 'Text', sprintf('Input %s min, maks', nama{k}));
+    lbl.FontColor = warna{k};
+    row = uigridlayout(rgbHost, [1 2]);
+    row.ColumnSpacing = 6;
+    row.Padding = [0 0 0 0];
+    row.BackgroundColor = [0.99 0.99 0.99];
+    app.IntensityRGBIn(k, 1) = uieditfield(row, 'numeric', 'Value', 0, ...
+        'Limits', [0 255], 'Tooltip', sprintf('Min kanal %s pada citra', nama{k}));
+    app.IntensityRGBIn(k, 2) = uieditfield(row, 'numeric', 'Value', 255, ...
+        'Limits', [0 255], 'Tooltip', sprintf('Maks kanal %s pada citra', nama{k}));
+end
+
+for k = 1:3
+    lbl = uilabel(rgbHost, 'Text', sprintf('Target %s min, maks', nama{k}));
+    lbl.FontColor = warna{k};
+    row = uigridlayout(rgbHost, [1 2]);
+    row.ColumnSpacing = 6;
+    row.Padding = [0 0 0 0];
+    row.BackgroundColor = [0.99 0.99 0.99];
+    app.IntensityRGBOut(k, 1) = uieditfield(row, 'numeric', 'Value', 0, ...
+        'Limits', [0 255], 'Tooltip', sprintf('Target min kanal %s (default 0)', nama{k}));
+    app.IntensityRGBOut(k, 2) = uieditfield(row, 'numeric', 'Value', 255, ...
+        'Limits', [0 255], 'Tooltip', sprintf('Target maks kanal %s (default 255)', nama{k}));
+end
+
+uilabel(rgbHost, 'Text', '');
+btn = uibutton(rgbHost, 'Text', 'Ambil min/maks per kanal', ...
+    'Tooltip', 'Isi rentang input dengan min/maks kanal R,G,B citra yang sedang dimuat', ...
+    'ButtonPushedFcn', @(~, ~) onTakeBounds(app));
+btn.Layout.Column = 2;
+
+updateStretchRGBAvailability(app);
 end
 
 % ---------------------------------------------------------------------------
@@ -653,13 +718,14 @@ uiconfirm(app.Figure, info, title, ...
 end
 
 function updateIntensityFields(app)
-if ~isfield(app, 'IntensityMode') || isempty(app.IntensityMode)
+if isempty(app.IntensityMode)
     return;
 end
 mode = app.IntensityMode.Value;
-isLog    = strcmp(mode, 'log');
-isPower  = strcmp(mode, 'power');
+isLog     = strcmp(mode, 'log');
+isPower   = strcmp(mode, 'power');
 isStretch = strcmp(mode, 'stretch');
+isRGB     = strcmp(mode, 'stretchRGB');
 
 app.IntensityC.Enable        = logical(isLog || isPower);
 app.IntensityGamma.Enable    = isPower;
@@ -668,10 +734,33 @@ app.IntensityR2.Enable       = isStretch;
 app.IntensitySMin.Enable     = isStretch;
 app.IntensitySMax.Enable     = isStretch;
 
+% blok stretch grayscale dan stretchRGB saling menggantikan
+app.IntensityGrayHost.Visible = ~isRGB;
+app.IntensityRGBHost.Visible  = isRGB;
+if isRGB
+    app.IntensityGrid.RowHeight = {28, 28, 28, 0, 'fit'};
+else
+    app.IntensityGrid.RowHeight = {28, 28, 28, 'fit', 0};
+end
+
 if isPower && app.IntensityGamma.Value == 1.0
     % beri nilai awal yang bermakna supaya tidak identik
     app.IntensityGamma.Value = 2.5;
 end
+end
+
+function updateStretchRGBAvailability(app)
+% pilihan stretchRGB hanya ada kalau citra yang dimuat berwarna (3 kanal)
+isColor = ~isempty(app.Original) && size(app.Original, 3) == 3;
+if isColor
+    app.IntensityMode.Items = {'negative', 'log', 'power', 'stretch', 'stretchRGB'};
+else
+    if strcmp(app.IntensityMode.Value, 'stretchRGB')
+        app.IntensityMode.Value = 'stretch';
+    end
+    app.IntensityMode.Items = {'negative', 'log', 'power', 'stretch'};
+end
+updateIntensityFields(app);
 end
 
 function updateFilteringFields(app)
@@ -733,14 +822,23 @@ fillSourceRange(app);
 end
 
 function fillSourceRange(app)
-% isi rentang input dengan min/maks grayscale citra (RGB -> grayscale)
+% isi rentang input dengan min/maks citra: grayscale (RGB -> grayscale) dan per kanal
 img = app.Original;
 if isempty(img), return; end
-if size(img, 3) == 3
-    img = rgb2gray(img);
+
+isColor = (size(img, 3) == 3);
+gray = img;
+if isColor
+    gray = rgb2gray(img);
+    for k = 1:3
+        ch = img(:, :, k);
+        app.IntensityRGBIn(k, 1).Value = double(min(ch(:)));
+        app.IntensityRGBIn(k, 2).Value = double(max(ch(:)));
+    end
 end
-app.IntensityR1.Value = double(min(img(:)));
-app.IntensityR2.Value = double(max(img(:)));
+app.IntensityR1.Value = double(min(gray(:)));
+app.IntensityR2.Value = double(max(gray(:)));
+updateStretchRGBAvailability(app);
 end
 
 function onUseReference(app)
@@ -861,7 +959,11 @@ switch app.TechBox.Value
             'r1',    app.IntensityR1.Value, ...
             'r2',    app.IntensityR2.Value, ...
             's1',    app.IntensitySMin.Value, ...
-            's2',    app.IntensitySMax.Value);
+            's2',    app.IntensitySMax.Value, ...
+            'r1rgb', arrayfun(@(f) f.Value, app.IntensityRGBIn(:, 1))', ...
+            'r2rgb', arrayfun(@(f) f.Value, app.IntensityRGBIn(:, 2))', ...
+            's1rgb', arrayfun(@(f) f.Value, app.IntensityRGBOut(:, 1))', ...
+            's2rgb', arrayfun(@(f) f.Value, app.IntensityRGBOut(:, 2))');
 
     case 'Histogram Equalization'
         tech = 'equalization';

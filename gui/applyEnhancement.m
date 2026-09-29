@@ -16,6 +16,9 @@ function [result, methodName, paramText] = applyEnhancement(img, technique, para
 %                 mode 'power'     : .c dan .gamma
 %                 mode 'stretch'   : .r1 dan .r2 (rentang input), .s1 dan .s2
 %                                    (rentang target, default 0 dan 255)
+%                 mode 'stretchRGB': .r1rgb .r2rgb (input) dan .s1rgb .s2rgb
+%                                    (target, default 0 dan 255), masing-masing
+%                                    vektor 1x3 untuk kanal R,G,B; hanya citra RGB
 %   equalization  .variant                % 'grayscale' | 'rgb' | 'lightness'
 %   specification .reference              % citra array atau path file
 %   filtering     .jenis .kernelSource .kernelSize .sigma .sharpWeight
@@ -124,8 +127,41 @@ switch mode
         methodName = 'Intensity Transformation - contrast stretching';
         paramText  = sprintf('input [%g, %g] -> target [%g, %g]', r1, r2, s1, s2);
 
+    case 'stretchrgb'
+        if size(img, 3) ~= 3
+            error('applyEnhancement:butuhRGB', 'Mode stretchRGB hanya untuk citra berwarna (RGB).');
+        end
+        r1 = getChannelVector(params, 'r1rgb', []);
+        r2 = getChannelVector(params, 'r2rgb', []);
+        s1 = getChannelVector(params, 's1rgb', [0 0 0]);
+        s2 = getChannelVector(params, 's2rgb', [255 255 255]);
+        if isempty(r1) || isempty(r2)
+            error('applyEnhancement:paramKurang', 'Mode stretchRGB butuh parameter .r1rgb dan .r2rgb (masing-masing 3 nilai R,G,B).');
+        end
+        nama = 'RGB';
+        for k = 1:3
+            checkRangeScalar(r1(k), ['r1rgb ' nama(k)]);
+            checkRangeScalar(r2(k), ['r2rgb ' nama(k)]);
+            checkRangeScalar(s1(k), ['s1rgb ' nama(k)]);
+            checkRangeScalar(s2(k), ['s2rgb ' nama(k)]);
+            if r1(k) >= r2(k)
+                error('applyEnhancement:rentangTidakValid', ...
+                    'Rentang input kanal %s tidak valid: min (%g) harus lebih kecil dari maks (%g).', ...
+                    nama(k), r1(k), r2(k));
+            end
+            if s1(k) >= s2(k)
+                error('applyEnhancement:rentangTargetTidakValid', ...
+                    'Rentang target kanal %s tidak valid: min (%g) harus lebih kecil dari maks (%g).', ...
+                    nama(k), s1(k), s2(k));
+            end
+        end
+        result = intensityTransform(img, 'stretchRGB', [r1; r2; s1; s2]);
+        methodName = 'Intensity Transformation - contrast stretching per kanal (RGB)';
+        paramText  = sprintf('R [%g,%g]->[%g,%g]; G [%g,%g]->[%g,%g]; B [%g,%g]->[%g,%g]', ...
+            r1(1), r2(1), s1(1), s2(1), r1(2), r2(2), s1(2), s2(2), r1(3), r2(3), s1(3), s2(3));
+
     otherwise
-        error('applyEnhancement:modeTidakDikenal', 'Mode intensity tidak dikenal: %s. Pilih negative, log, power, atau stretch.', mode);
+        error('applyEnhancement:modeTidakDikenal', 'Mode intensity tidak dikenal: %s. Pilih negative, log, power, stretch, atau stretchRGB.', mode);
 end
 end
 
@@ -348,6 +384,17 @@ if ~isfield(s, name) || isempty(s.(name))
 end
 v = s.(name);
 validateattributes(v, {'numeric'}, {'finite', 'scalar'}, 'applyEnhancement', name);
+end
+
+function v = getChannelVector(s, name, default)
+% vektor baris 1x3 (nilai kanal R,G,B)
+if ~isfield(s, name) || isempty(s.(name))
+    v = default;
+    return;
+end
+v = s.(name);
+validateattributes(v, {'numeric'}, {'finite', 'numel', 3}, 'applyEnhancement', name);
+v = double(v(:)');
 end
 
 function v = getText(s, name, default)

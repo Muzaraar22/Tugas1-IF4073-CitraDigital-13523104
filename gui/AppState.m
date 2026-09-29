@@ -32,6 +32,8 @@ classdef AppState < handle
         IntensityMode   = []; IntensityC   = [];
         IntensityGamma  = []; IntensityR1  = []; IntensityR2 = [];
         IntensitySMin = []; IntensitySMax = [];
+        IntensityGrid = []; IntensityGrayHost = []; IntensityRGBHost = [];
+        IntensityRGBIn = []; IntensityRGBOut = [];
 
         % panel equalization
         EqualVariant = [];

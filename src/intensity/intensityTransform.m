@@ -32,6 +32,21 @@ switch lower(mode)
         sMax = param(4);
         result = (img - rMin) / (rMax - rMin) * (sMax - sMin) + sMin;
 
+    case 'stretchrgb'
+        %contrast stretching per kanal: param = 4x3, kolom = kanal R,G,B,
+        %baris = [rMin; rMax; sMin; sMax]
+        if size(img, 3) ~= 3
+            error('intensityTransform:butuhRGB', 'stretchRGB hanya untuk citra RGB.');
+        end
+        result = zeros(size(img));
+        for k = 1:3
+            rMin = param(1, k);
+            rMax = param(2, k);
+            sMin = param(3, k);
+            sMax = param(4, k);
+            result(:, :, k) = (img(:, :, k) - rMin) / (rMax - rMin) * (sMax - sMin) + sMin;
+        end
+
     otherwise
         error('P ga ada dipilihan: %s', mode);
 end
