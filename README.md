@@ -15,7 +15,7 @@ Program mengimplementasikan lima kelompok teknik *image enhancement* sesuai spes
 | *Histogram Equalization* | `src/equalization/` |
 | *Histogram Specification/Matching* | `src/specification/` |
 | *Image Filtering* dengan *Masking* (linear & non-linear) | `src/filtering/` |
-| *Image Arithmetic* | `src/arithmetic/` |
+| *Image Arithmetic* (eksplorasi) | `src/arithmetic/` |
 
 Program didesain dan diimplementasikan berdasarkan teknik-teknik yang telah diajarkan di kelas IF4073. Program menyediakan sebuah antarmuka visual untuk memilih citra yang akan diproses, mengatur konfigurasi untuk teknik yang dipilih, melihat citra masukan, serta melihat citra hasil. Selain itu, program juga menyediakan fitur stacking dan export. Stacking memungkinnkan pengguna untuk menerapkan enhancement lagi terhadap image yang telah enhanced dan export memungkinkan pengguna meng-ekspor hasil dari image yang telah di-enhance.
 
@@ -29,17 +29,7 @@ Program didesain dan diimplementasikan berdasarkan teknik-teknik yang telah diaj
 ## Tata Cara Menjalankan Program
 
 1. Buka MATLAB, lalu arahkan *Current Folder* ke folder repositori ini.
-
-2. Tambahkan folder program ke path:
-
-   ```matlab
-   startup
-   ```
-
-   `startup` memasukkan `src/`, `gui/`, `scripts/`, `tests/`, dan `config/` ke path, lalu
-   memindahkan *current folder* ke akar repositori.
-
-3. Jalankan GUI:
+2. Jalankan GUI:
 
    ```matlab
    ImageEnhancementApp
